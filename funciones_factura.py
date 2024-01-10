@@ -1,3 +1,5 @@
+import pandas as pd
+import datetime
 def calcular_energia(cons_mens_P1,cons_mens_P2,cons_mens_P3, precio_mens_P1,precio_mens_P2,precio_mens_P3,descuento):
     # sumatorio_cons_mens=cons_mens_P1+cons_mens_P2+cons_mens_P3
     precio_P1_descuento= precio_mens_P1 * (1-descuento) #€
@@ -22,3 +24,18 @@ def calcular_total_factura(sumatorio_total_pago_energia,sumatorio_total_pago_pot
          +impuesto_electrico + otros)
     importe_total_factura_mens= bi_IVA * (1+IVA)
     return importe_total_factura_mens
+
+df=pd.read_csv('data/processed/indexed_price.csv')
+def filtrar_df(): #cargar el df antes de llamar a la función
+    # df=df
+    df['MES'] = pd.to_datetime(df['MES'])
+
+    fecha_actual = datetime.now()
+
+    df['diferencia'] = (fecha_actual - df['MES']).abs()
+
+    condicion = (df['SISTEMA'] == 'PENINSULA') & (df['TARIFA'] == '2.0TD')
+    filas_mas_cercanas = df[condicion].groupby(['SISTEMA', 'TARIFA', 'CIA']).apply(lambda x: x[x['diferencia'] == x['diferencia'].min()])
+
+    filas_mas_cercanas = filas_mas_cercanas.drop('diferencia', axis=1).reset_index(drop=True)
+    return filas_mas_cercanas
