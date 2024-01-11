@@ -16,7 +16,7 @@ app.config["DEBUG"] = True
 
 @app.route('/', methods=['GET'])
 def home():
-    return "<h1>Api test</h1><p>This site is just a test for data</p>"
+    return "<h1>Desafío de tripulaciones, grupo 2 (API Data homepage)</p>"
 
 # 1./anualdata: recibe un CUPS, realiza el webscraping y devuelve los datos anuales
 @app.route('/anualdata/<string:CUPS_input>', methods=['GET'])
@@ -311,10 +311,23 @@ def anual_data(CUPS_input):
     #tildes no las lee
     
     
-# 2.Ruta para obtener un libro concreto mediante su id como parámetro en la llamada
-# @app.route('/v0/book_id', methods=['GET'])
-# def book_id():
-#     id = int(request.args['id'])
+# 2./proposal: recibe los datos de factura, datos anuales, la compañía, modelo, etc, realiza los cálculos y devuelve todos los datos de la propuesta en concreto
+@app.route('/proposal/<string:Tipo_consumo>/<string:Metodo>/<float:cons_mens_P1>/,<float:cons_mens_P2>/<float:cons_mens_P3>/<float:precio_mens_P1>/<float:precio_mens_P2>/<float:precio_mens_P3>/<float:descuento>/<float:potencia_contratada_P1>/<float:potencia_contratada_P2>/<float:dias>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P2>/<float:impuesto_electrico>/<float:alquiler_equipo>/<float:otros>/<float:descuento>/<string:Tipo_sistema>/<string:Tipo_tarifa>/<string:CIA>/<string:producto_CIA>/<timestamp:mes_facturacion>/<string:FEE>' methods=['GET'])
+def proposal(Tipo_consumo,Metodo,Tipo_tarifa,cons_mens_P1,cons_mens_P2,cons_mens_P3,precio_mens_P1,precio_mens_P2,precio_mens_P3,descuento,potencia_contratada_P1,
+              potencia_contratada_P2,dias,precio_potencia_dia_P1,precio_potencia_dia_P2,impuesto_electrico,alquiler_equipo,otros,descuento,Tipo_sistema,Tipo_tarifa,
+              CIA,producto_CIA,mes_facturacion,FEE): #tipo_consumo: mensual o anual; metodo: fijo o indexado
+    if Tipo_consumo=='Consumo mensual':
+        if Metodo=='Fijo':
+            x
+        elif Metodo=='Indexado':
+            x
+    elif Tipo_consumo=='Consumo anual':
+        if Metodo=='Fijo':
+            x
+        elif Metodo=='Indexado':
+            x
+    xxx
+    
 #     results = [book for book in books if book["id"]==id]
 #     return results
 
