@@ -10,10 +10,10 @@ df = pd.read_csv(ruta)
 
 
 db_params = {
-    'host': 'localhost',
-    'database': 'testeo',
+    'host': '34.78.249.103',
+    'database': 'postgres',
     'user': 'postgres',
-    'password': 'planta'
+    'password': 'cristian99'
 }
 """
 # Conectar a la base de datos
@@ -58,6 +58,11 @@ create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join([f'{c
 cursor.execute(create_table_query)
 conn.commit()
 
+csv_data.seek(0)  
+copy_query = f"COPY {table_name} FROM STDIN WITH CSV HEADER DELIMITER ',';"
+cursor.copy_expert(sql=copy_query, file=csv_data)
+conn.commit()
+
 #---------------------------------------------------------------segundo csv---------------------------------------------------------------------
 
 ruta = "./data/processed/indexed_price.csv"
@@ -69,7 +74,7 @@ columns_and_types = [
     ('SISTEMA', 'TEXT'),
     ('TARIFA', 'TEXT'),
     ('CIA', 'TEXT'),
-    ('MES', 'TEXT'),
+    ('MES', 'TIMESTAMP'),
     ('FEE', 'TEXT'),
     ('P1', 'DOUBLE PRECISION'),
     ('P2', 'DOUBLE PRECISION'),
