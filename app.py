@@ -5,16 +5,25 @@ app = Flask(__name__)
 app.config["DEBUG"] = True
 
 
+# recibe un CUPS, realiza el webscraping y devuelve los datos anuales
+@app.route('/anualdata', methods=['GET'])
+def anual():
 
-@app.route('/', methods=['GET'])
-def home():
-    return "<h1>Api test</h1><p>This site is just a test for </p>"
+    return ""
 
-# 1.Ruta para obtener todos los libros
-@app.route('/v0/books', methods=['GET'])
-def all_books():
-    return jsonify(books)
-    
+# recibe los datos de factura, datos anuales, la compañía, modelo, etc, realiza los cálculos y devuelve todos los datos de la propuesta en concreto
+@app.route('/proposal', methods=['GET'])
+def propuesta():
+    return ""
+
+@app.route('/proposals/chart', methods=['GET'])
+def charts():
+
+    return ""
+
+
+
+
 # 2.Ruta para obtener un libro concreto mediante su id como parámetro en la llamada
 @app.route('/v0/book_id', methods=['GET'])
 def book_id():
