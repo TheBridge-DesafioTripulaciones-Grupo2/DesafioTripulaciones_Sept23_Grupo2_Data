@@ -1,0 +1,7 @@
+objetivo de la aplicacion: que cliente se pueda deshacer del excell y que se pueda hacer desde una consulta web
+
+si la tabla funciona, tirar con ella.
+
+Si se puede mejorar, en el futuro la mejoramos.
+
+
