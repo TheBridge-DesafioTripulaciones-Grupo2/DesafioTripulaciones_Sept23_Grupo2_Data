@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session, redirect, url_for
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
@@ -7,6 +7,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 import time
 import pandas as pd
+from datetime import datetime
 from key import usuario,contrasena
 import psycopg2
 # from datos_dummy import bd
@@ -30,14 +31,17 @@ cursor = conn.cursor()
 
 
 consulta_fixed = "SELECT * FROM fixed_price"
+consulta_indexed = "SELECT * FROM indexed_price"
 consulta_power = "SELECT * FROM indexed_price_power"
 
 df_database = pd.read_sql_query(consulta_fixed, conn)
+index_price = pd.read_sql_query(consulta_indexed, conn)
 index_power = pd.read_sql_query(consulta_power, conn)
-
 
 cursor.close()
 conn.close()
+
+#-------------------------------------------------------------
 
 #-------------------------------------------------------------MENSUAL FIJO--------------------------------------------------------
 
@@ -66,35 +70,25 @@ def calcular_total_factura_mens_fijo(sumatorio_total_pago_energia,sumatorio_tota
     importe_total_factura_mens= bi_IVA * (1+IVA)
     return importe_total_factura_mens
 
-def encontrar_opcion_mas_barata_mens_fijo(df,sumatorio_total_pago_energia, sumatorio_total_pago_potencia,impuesto_electrico, otros, alquiler_equipo, IVA): #df_filtrado
+def encontrar_opcion_mas_barata_mens_fijo(df,cons_mens_P1,cons_mens_P2,cons_mens_P3,precio_mens_P1,precio_mens_P2,precio_mens_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, impuesto_electrico, otros, alquiler_equipo, IVA): #df_filtrado
     opciones = []
 
-    cons_mens_P1, cons_mens_P2, cons_mens_P3 = 74, 83, 168 #CAMBIAR A INPUT DE LA FACTURA
-    potencia_contratada_P1, potencia_contratada_P2 = 3.45, 3.45 #CAMBIAR A INPUT DE LA FACTURA
-    precio_mens_P1, precio_mens_P2, precio_mens_P3 = 0.128515, 0.128515, 0.128515
-    precio_potencia_dia_P1, precio_potencia_dia_P2 = 0.09968, 0.033816
-    descuento = 0.02  # CAMBIAR A INPUT DE LA FACTURA
-    dias = 33 # CAMBIAR A INPUT DE LA FACTURA
-    impuesto_electrico, otros, alquiler_equipo, IVA = 0.33, 1.27, 0.88,0.05  # CAMBIAR A INPUT DE LA FACTURA
-    
-    #sumatorio_total_pago_energia = calcular_energia(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
-    #sumatorio_total_pago_potencia = calcular_potencia(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2)
-    
-
+   
+    sumatorio_total_pago_energia = calcular_energia_mens_fijo(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
+    sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2)
     # print(sumatorio_total_pago_energia,sumatorio_total_pago_potencia)
-
     importe_total_factura_mens_actual = round(calcular_total_factura_mens_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
 
     for index,row in df.iterrows():
 
-        #sumatorio_total_pago_energia = calcular_energia(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
-        #sumatorio_total_pago_potencia = calcular_potencia(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2)
+        sumatorio_total_pago_energia = calcular_energia_mens_fijo(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
+        sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2)
         importe_total_factura_mens = round(calcular_total_factura_mens_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
 
         opciones.append({
-            'CIA': row['CIA'],
-            'FEE': row['FEE'],
-            'PRODUCTO_CIA': row['PRODUCTO_CIA'],
+            'CIA': row['cia'],
+            'FEE': row['fee'],
+            'PRODUCTO_CIA': row['producto_cia'],
             'CostoTotal': importe_total_factura_mens
         })
 
@@ -142,19 +136,12 @@ def calcular_total_factura_mens_index(sumatorio_total_pago_energia,sumatorio_tot
     return importe_total_factura_mens
 
 
-def encontrar_opcion_mas_barata_mens_index(df_energia, df_potencia,sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo, IVA):
+def encontrar_opcion_mas_barata_mens_index(df_energia,df_potencia,cons_mens_P1,cons_mens_P2,cons_mens_P3,precio_mens_P1,precio_mens_P2,precio_mens_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, impuesto_electrico, otros, alquiler_equipo, IVA):
     opciones = []
 
-    df_combinado = pd.merge(df_energia, df_potencia, on='CIA',suffixes=["_E","_P"])
+    df_combinado = pd.merge(df_energia, df_potencia, on='cia',suffixes=["_e","_p"])
     df_combinado.dropna(axis=0,inplace=True)
 
-    cons_mens_P1, cons_mens_P2, cons_mens_P3 = 74, 83, 168 #CAMBIAR A INPUT DE LA FACTURA
-    potencia_contratada_P1, potencia_contratada_P2 = 3.45, 3.45 #CAMBIAR A INPUT DE LA FACTURA
-    precio_mens_P1, precio_mens_P2, precio_mens_P3 = 0.128515, 0.128515, 0.128515
-    precio_potencia_dia_P1, precio_potencia_dia_P2 = 0.09968, 0.033816
-    descuento = 0.02  # CAMBIAR A INPUT DE LA FACTURA
-    dias = 33 # CAMBIAR A INPUT DE LA FACTURA
-    impuesto_electrico, otros, alquiler_equipo, IVA = 0.33, 1.27, 0.88,0.05  # CAMBIAR A INPUT DE LA FACTURA
     #sumatorio_total_pago_energia = calcular_energia_mens_index(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
     #sumatorio_total_pago_potencia = calcular_potencia_mens_index(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2)
 
@@ -168,12 +155,15 @@ def encontrar_opcion_mas_barata_mens_index(df_energia, df_potencia,sumatorio_tot
  
         # print(sumatorio_total_pago_energia,sumatorio_total_pago_potencia)
 
+        sumatorio_total_pago_energia = calcular_energia_mens_index(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
+        sumatorio_total_pago_potencia = calcular_potencia_mens_index(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2)
+
         importe_total_factura_mens = round(calcular_total_factura_mens_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
 
         opciones.append({
-            'CIA': row['CIA'],
-            'FEE': row['FEE'],
-            'PRODUCTO_CIA': row['PRODUCTO_CIA'],
+            'CIA': row['cia'],
+            'FEE': row['fee'],
+            'PRODUCTO_CIA': row['producto_cia'],
             'CostoTotal': importe_total_factura_mens
         })
 
@@ -190,6 +180,81 @@ def encontrar_opcion_mas_barata_mens_index(df_energia, df_potencia,sumatorio_tot
     return ('Precio actual:',importe_total_factura_mens_actual,'Opción más barata:',opcion_barata,
             'Ahorro:',ahorro_euros, 'Porcentaje de ahorro:',f"{porcentaje_ahorro:.1f}%","Opciones más baratas:", opciones_mas_baratas)
 
+#------------------------------------------------------------ANUAL FIJO-----------------------------------------------------------------
+
+# funciones de cálculo importes
+def calcular_energia_anual_fijo(cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_mens_P1,precio_mens_P2,precio_mens_P3,descuento):
+    # sumatorio_cons_mens=cons_mens_P1+cons_mens_P2+cons_mens_P3
+    # cons_anual_P1,cons_anual_P2,cons_anual_P3 ==========>TIENEN QUE VENIR DEL SCRAPPING DE CANDELA POR EL CUPS
+    precio_P1_descuento= precio_mens_P1 * (1-descuento) #€
+    precio_P2_descuento= precio_mens_P2 * (1-descuento)
+    precio_P3_descuento= precio_mens_P3 * (1-descuento)
+
+    total_pago_P1_energia= cons_anual_P1 * precio_P1_descuento #€
+    total_pago_P2_energia= cons_anual_P2 * precio_P2_descuento
+    total_pago_P3_energia= cons_anual_P3 * precio_P3_descuento
+
+    sumatorio_total_pago_energia = total_pago_P1_energia + total_pago_P2_energia + total_pago_P3_energia
+    return sumatorio_total_pago_energia
+
+def calcular_potencia_anual_fijo(potencia_contratada_P1,potencia_contratada_P2,precio_potencia_dia_P1,precio_potencia_dia_P2):
+    
+    # OJO HAY Q SCRAPEAR LAS POTENCIA_CONTRATADA
+    total_pago_P1_potencia= 365 * precio_potencia_dia_P1 * potencia_contratada_P1
+    total_pago_P2_potencia= 365 * precio_potencia_dia_P2 * potencia_contratada_P2
+    sumatorio_total_pago_potencia = total_pago_P1_potencia + total_pago_P2_potencia
+    return sumatorio_total_pago_potencia
+
+def calcular_total_factura_anual_fijo(sumatorio_total_pago_energia,sumatorio_total_pago_potencia,impuesto_electrico,otros,alquiler_equipo,IVA):
+    bi_IVA= (sumatorio_total_pago_energia + sumatorio_total_pago_potencia
+         +impuesto_electrico*12 + + alquiler_equipo*12 + otros*12)
+    importe_total_factura_anual= bi_IVA * (1+IVA)
+    return importe_total_factura_anual
+
+def encontrar_opcion_mas_barata_anual_fijo(df): #df_filtrado
+    opciones = []
+
+    sumatorio_total_pago_energia = calcular_energia_anual_fijo(cons_anual_P1, cons_anual_P2, cons_anual_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
+    sumatorio_total_pago_potencia = calcular_potencia_anual_fijo(potencia_contratada_P1, potencia_contratada_P2, precio_potencia_dia_P1, precio_potencia_dia_P2)
+    impuesto_electrico, otros, alquiler_equipo, IVA = 0.33, 1.27, 0.88,0.05  # CAMBIAR A INPUT DE LA FACTURA
+
+    # print(sumatorio_total_pago_energia,sumatorio_total_pago_potencia)
+
+    importe_total_factura_anual_actual = round(calcular_total_factura_anual_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
+
+
+    for index,row in df.iterrows():
+
+        precio_mens_P1, precio_mens_P2, precio_mens_P3 = row['p1_e'], row['p2_e'], row['p3_e']
+        precio_potencia_dia_P1, precio_potencia_dia_P2 = row['p1_p'], row['p2_p']
+
+
+        
+        sumatorio_total_pago_energia = calcular_energia_anual_fijo(cons_anual_P1, cons_anual_P2, cons_anual_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
+        sumatorio_total_pago_potencia = calcular_potencia_anual_fijo(potencia_contratada_P1, potencia_contratada_P2, precio_potencia_dia_P1, precio_potencia_dia_P2)
+        impuesto_electrico, otros,alquiler_equipo, IVA = 0.33, 1.27,0.88, 0.05  # CAMBIAR A INPUT DE LA FACTURA
+
+        importe_total_factura_anual = round(calcular_total_factura_anual_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
+
+        opciones.append({
+            'CIA': row['cia'],
+            'FEE': row['fee'],
+            'PRODUCTO_CIA': row['producto_cia'],
+            'CostoTotal': importe_total_factura_anual
+        })
+
+    # Opción más barata para cada compañía
+    df_opciones = pd.DataFrame(opciones)
+    idx_opcion_mas_barata = df_opciones['CostoTotal'].idxmin()
+    
+    opcion_barata=df_opciones.iloc[idx_opcion_mas_barata]
+
+    opciones_mas_baratas = df_opciones.nsmallest(5, 'CostoTotal')
+    ahorro_euros=round(importe_total_factura_anual_actual-opcion_barata['CostoTotal'],2)
+    porcentaje_ahorro= round((ahorro_euros/importe_total_factura_anual_actual)*100,2)
+
+    return ('Precio actual:',importe_total_factura_anual_actual,'Opción más barata:',opcion_barata,
+            'Ahorro:',ahorro_euros, 'Porcentaje de ahorro:',f"{porcentaje_ahorro:.1f}%","Opciones más baratas:", opciones_mas_baratas)
 
 #-------------------------------------------------------CREAMOS APP----------------------------------------------------
 
@@ -497,40 +562,53 @@ def anual_data(CUPS_input):
 #----------------------------------------------------------SEGUNDO ENDPOINT----------------------------------------------------------
 
 # 2./proposal: recibe los datos de factura, datos anuales, la compañía, modelo, etc, realiza los cálculos y devuelve todos los datos de la propuesta en concreto
-@app.route('/proposal/<string:Tipo_consumo>/<string:Metodo>/<float:cons_mens_P1>/,<float:cons_mens_P2>/<float:cons_mens_P3>/<float:precio_mens_P1>/<float:precio_mens_P2>/<float:precio_mens_P3>/<float:descuento>/<float:potencia_contratada_P1>/<float:potencia_contratada_P2>/<float:dias>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P2>/<float:impuesto_electrico>/<float:alquiler_equipo>/<float:otros>/<string:Tipo_sistema>/<string:Tipo_tarifa>/<string:CIA>/<string:producto_CIA>/<timestamp:mes_facturacion>/<string:FEE>/<int:IVA>' methods=['GET'])
-def proposal(Tipo_consumo,Metodo,cons_mens_P1,cons_mens_P2,cons_mens_P3,precio_mens_P1,precio_mens_P2,precio_mens_P3,descuento,potencia_contratada_P1,
+@app.route('/proposal/<string:Tipo_consumo>/<string:Metodo>/<float:cons_P1>/,<float:cons_P2>/<float:cons_P3>/<float:precio_P1>/<float:precio_P2>/<float:precio_P3>/<float:descuento>/<float:potencia_contratada_P1>/<float:potencia_contratada_P2>/<float:dias>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P2>/<float:impuesto_electrico>/<float:alquiler_equipo>/<float:otros>/<string:Tipo_sistema>/<string:Tipo_tarifa>/<string:CIA>/<string:producto_CIA>/<timestamp:mes_facturacion>/<string:FEE>/<int:IVA>' methods=['GET'])
+def proposal(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,descuento,potencia_contratada_P1,
               potencia_contratada_P2,dias,precio_potencia_dia_P1,precio_potencia_dia_P2,impuesto_electrico,alquiler_equipo,otros,Tipo_sistema,Tipo_tarifa,
               CIA,producto_CIA,mes_facturacion,FEE,IVA): #tipo_consumo: mensual o anual; metodo: fijo o indexado
     #mensual utiliza la fixed price, la filtramos para peninsula y 2.0
     df_filtrado = (df_database['sistema'] == 'PENINSULA') & (df_database['tarifa'] == '2.0TD')
+
+    #indexed price filtros
+    fecha_actual = datetime.now()
+    index_price['diferencia'] = (fecha_actual - index_price['mes']).abs() # diferencia entre cada fecha 'MES' y la fecha actual
+    condicion = (index_price['sistema'] == 'PENINSULA') & (index_price['tarifa'] == '2.0TD') # filtrar para obtener las filas más cercanas por CIA y con SISTEMA y TARIFA específicos
+    filas_mas_cercanas = index_price[condicion].groupby(['sistema', 'tarifa', 'cia']).apply(lambda x: x[x['diferencia'] == x['diferencia'].min()])
+    filas_mas_cercanas = filas_mas_cercanas.drop('diferencia', axis=1).reset_index(drop=True)
 
     #indexed price power filtros
     condiciones_sistema_tarifa = (index_power['sistema'] == 'PENINSULA') & (index_power['tarifa'] == '2.0TD') & (index_power['producto'] == 'INDEXADO')
     condiciones_cias = index_power['cia'].isin(['ACCIONA', 'AEQ', 'CANDELA', 'FACTOR', 'IGNIS', 'MAX'])
     index_power_filtrado = index_power[condiciones_sistema_tarifa & condiciones_cias]
 
+
+    #cons_mens_P1, cons_mens_P2, cons_mens_P3 = 74, 83, 168 #CAMBIAR A INPUT DE LA FACTURA
+    #potencia_contratada_P1, potencia_contratada_P2 = 3.45, 3.45 #CAMBIAR A INPUT DE LA FACTURA
+    #precio_mens_P1, precio_mens_P2, precio_mens_P3 = 0.128515, 0.128515, 0.128515
+    #precio_potencia_dia_P1, precio_potencia_dia_P2 = 0.09968, 0.033816
+    #descuento = 0.02  # CAMBIAR A INPUT DE LA FACTURA
+    #dias = 33 # CAMBIAR A INPUT DE LA FACTURA
+    #impuesto_electrico, otros, alquiler_equipo, IVA = 0.33, 1.27, 0.88,0.05  # CAMBIAR A INPUT DE LA FACTURA
+
     #----------------------------------------Calculadora de consumo mensual----------------------------------------------
     if Tipo_consumo=='Consumo mensual':
         #------------------------------------------Mensual Fijo-------------------------------------------------------
         if Metodo=='Fijo':
             # funciones de cálculo importes
-            sumatorio_total_pago_energia = calcular_energia_mens_fijo(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
-            sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2)
-            opcion_barata_mens_fijo = encontrar_opcion_mas_barata_mens_fijo(df_filtrado,sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
-
+            opcion_barata_mens_fijo = encontrar_opcion_mas_barata_mens_fijo(df_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, impuesto_electrico, otros, alquiler_equipo, IVA)
             #return jsonify(opcion_barata)
           
          #------------------------------------------Mensual Indexado--------------------------------------------------
         elif Metodo=='Indexado':
-            sumatorio_total_pago_energia = calcular_energia_mens_index(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
-            sumatorio_total_pago_potencia = calcular_potencia_mens_index(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2)
-            opcion_barata_mens_index = encontrar_opcion_mas_barata_mens_index(index_power_filtrado,sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
+            opcion_barata_mens_index = encontrar_opcion_mas_barata_mens_index(index_power_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, impuesto_electrico, otros, alquiler_equipo, IVA)
 
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
     elif Tipo_consumo=='Consumo anual':
         #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
         if Metodo=='Fijo':
-            x
+            sumatorio_total_pago_energia = calcular_energia_anual_fijo(cons_P1,cons_P2,cons_P3, precio_P1,precio_P2,precio_P3,descuento)
+            sumatorio_total_pago_potencia = calcular_potencia_anual_fijo(potencia_contratada_P1,potencia_contratada_P2,precio_potencia_dia_P1,precio_potencia_dia_P2)
+            
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
         elif Metodo=='Indexado':
             x
