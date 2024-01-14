@@ -15,13 +15,6 @@ db_params = {
     'user': 'postgres',
     'password': 'planta'
 }
-"""
-# Conectar a la base de datos
-
-engine = create_engine(f'postgresql+psycopg2://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}/{db_params["database"]}')
-df.to_sql('fixed_price', engine, if_exists='replace', index=False)
-
-engine.dispose()"""
 
 
 conn = psycopg2.connect(**db_params)
@@ -43,13 +36,14 @@ columns_and_types = [
     ('p4_p', 'DOUBLE PRECISION'),
     ('p5_p', 'DOUBLE PRECISION'),
     ('p6_p', 'DOUBLE PRECISION'),
-    ('p1_e', 'TEXT'),
-    ('p2_e', 'TEXT'),
-    ('p3_e', 'TEXT'),
-    ('p4_e', 'TEXT'),
-    ('p5_e', 'TEXT'),
-    ('p6_e', 'TEXT')
+    ('p1_e', 'DOUBLE PRECISION'),
+    ('p2_e', 'DOUBLE PRECISION'),
+    ('p3_e', 'DOUBLE PRECISION'),
+    ('p4_e', 'DOUBLE PRECISION'),
+    ('p5_e', 'DOUBLE PRECISION'),
+    ('p6_e', 'DOUBLE PRECISION')
 ]
+
 
 csv_data = io.StringIO()
 df.to_csv(csv_data, index=False, header=True, sep=',')
