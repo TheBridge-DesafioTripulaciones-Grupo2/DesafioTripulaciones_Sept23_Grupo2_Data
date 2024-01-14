@@ -8,9 +8,9 @@ from selenium.webdriver.common.by import By
 import time
 import pandas as pd
 from datetime import datetime
-from key import usuario,contrasena
 import psycopg2
-# from datos_dummy import bd
+from key import usuario,contrasena
+
 
 
 
@@ -19,13 +19,42 @@ app.config["DEBUG"] = True
 app.secret_key = 's3cr3t0'
 #------------------------------------------------------------Conectamos y sacamos los datos de la database---------------------------------------------------------
 
+db_params = {
+    'host': '34.78.249.103',
+    'database': 'postgres',
+    'user': 'postgres',
+    'password': 'cristian99'
+}
+
+conn = psycopg2.connect(**db_params)
+cursor = conn.cursor()
 
 
-df_fixed = pd.read_csv("./data/processed/fixed_price.csv")
-index_price = pd.read_csv("./data/processed/indexed_price.csv")
-index_power = pd.read_csv("./data/processed/indexed_price_power.csv")
+consulta_fixed = "SELECT * FROM fixed_price"
+consulta_indexed = "SELECT * FROM indexed_price"
+consulta_power = "SELECT * FROM indexed_price_power"
+
+df_fixed = pd.read_sql_query(consulta_fixed, conn)
+index_price = pd.read_sql_query(consulta_indexed, conn)
+index_power = pd.read_sql_query(consulta_power, conn)
 index_price_anual = index_price.copy()
 index_price_power_anual = index_power.copy()
+
+cursor.close()
+conn.close()
+
+"""df_fixed = pd.read_csv("./data/processed/fixed_price.csv")
+index_price = pd.read_csv("./data/processed/indexed_price.csv")
+index_power = pd.read_csv("./data/processed/indexed_price_power.csv")
+
+
+df_fixed.columns = df_fixed.columns.str.lower()
+index_price.columns = index_price.columns.str.lower()
+index_power.columns = index_power.columns.str.lower()
+
+index_price_anual = index_price.copy()
+index_price_power_anual = index_power.copy()"""
+
 
 #-------------------------------------------------------------
 
@@ -73,13 +102,13 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
 
         
         # Update the minimum cost for each 'CIA'
-        if row['CIA'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['CIA']]:
-            min_cost_dict[row['CIA']] = importe_total_factura_mens
+        if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
+            min_cost_dict[row['cia']] = importe_total_factura_mens
 
         opciones = [{
         'CIA': cia,
-        'FEE': df.loc[df['CIA'] == cia, 'FEE'].values[0],
-        'PRODUCTO_CIA': df.loc[df['CIA'] == cia, 'PRODUCTO_CIA'].values[0],
+        'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
+        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
@@ -96,11 +125,18 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
 
     if endpoint==2:
-            return jsonify({
-                'Precio actual': importe_total_factura_mens_actual,
-                'Opción más barata': opcion_barata,
-                'Ahorro': ahorro_euros,
-                'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%"})
+            resultados_df = pd.DataFrame({
+                'Precio actual': [importe_total_factura_mens_actual],
+                'Opción más barata': [opcion_barata],
+                'Ahorro': [ahorro_euros],
+                'Porcentaje de ahorro': [f"{porcentaje_ahorro:.1f}%"]
+            })
+
+            # Convierte el DataFrame a cadena JSON
+            resultados_json = resultados_df.to_json(orient='records', force_ascii=False)
+
+            # Utiliza jsonify para devolver la respuesta JSON
+            return jsonify(resultados_json)
     
     elif endpoint==3:
         return jsonify({'Precio actual': importe_total_factura_mens_actual, 'Opciones más baratas': opciones_mas_baratas}), opciones_mas_baratas
@@ -154,15 +190,15 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
 
         importe_total_factura_mens = round(calcular_total_factura_mens_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
 
-        if row['CIA'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['CIA']]:
-            min_cost_dict[row['CIA']] = importe_total_factura_mens
+        if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
+            min_cost_dict[row['cia']] = importe_total_factura_mens
 
    
     # Create a list with the minimum cost entries for each 'CIA' and calculate savings for each option
     opciones = [{
         'CIA': cia,
-        'FEE': df_combinado.loc[df_combinado['CIA'] == cia, 'FEE'].values[0],
-        'PRODUCTO_CIA': df_combinado.loc[df_combinado['CIA'] == cia, 'PRODUCTO_CIA'].values[0],
+        'FEE': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0],
+        'PRODUCTO_CIA': df_combinado.loc[df_combinado['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
@@ -249,14 +285,14 @@ def  encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1,cons_a
         importe_total_factura_anual = round(calcular_total_factura_anual_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
 
         # Update the minimum cost for each 'CIA'
-        if row['CIA'] not in min_cost_dict or importe_total_factura_anual < min_cost_dict[row['CIA']]:
-            min_cost_dict[row['CIA']] = importe_total_factura_anual
+        if row['cia'] not in min_cost_dict or importe_total_factura_anual < min_cost_dict[row['cia']]:
+            min_cost_dict[row['cia']] = importe_total_factura_anual
 
  
     opciones = [{
         'CIA': cia,
-        'FEE': df.loc[df['CIA'] == cia, 'FEE'].values[0],
-        'PRODUCTO_CIA': df.loc[df['CIA'] == cia, 'PRODUCTO_CIA'].values[0],
+        'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
+        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_anual_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_anual_actual - min_cost) / importe_total_factura_anual_actual) * 100, 2)
@@ -338,15 +374,15 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
         importe_total_factura_anual_ppta = round(calcular_total_factura_anual_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
         
        # Update the minimum cost for each 'CIA'
-        if row['CIA'] not in min_cost_dict or importe_total_factura_anual_ppta < min_cost_dict[row['CIA']]:
-            min_cost_dict[row['CIA']] = importe_total_factura_anual_ppta
+        if row['cia'] not in min_cost_dict or importe_total_factura_anual_ppta < min_cost_dict[row['cia']]:
+            min_cost_dict[row['cia']] = importe_total_factura_anual_ppta
 
     
     # Create a list with the minimum cost entries for each 'CIA' and calculate savings for each option
     opciones = [{
         'CIA': cia,
-        'FEE': df_combinado.loc[df_combinado['CIA'] == cia, 'FEE'].values[0],
-        'PRODUCTO_CIA': df_combinado.loc[df_combinado['CIA'] == cia, 'PRODUCTO_CIA'].values[0],
+        'FEE': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0],
+        'PRODUCTO_CIA': df_combinado.loc[df_combinado['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_anual_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_anual_actual - min_cost) / importe_total_factura_anual_actual) * 100, 2)
@@ -704,7 +740,7 @@ def anual_data():
 # 2./proposal: recibe los datos de factura, datos anuales, la compañía, modelo, etc, realiza los cálculos y devuelve todos los datos de la propuesta en concreto
 @app.route('/proposal', methods=['GET'])
 def proposal():
-    # Obtén los parámetros de la cadena de consulta
+
     Tipo_consumo = request.args.get('Tipo_consumo')
     Metodo = request.args.get('Metodo')
     cons_P1 = float(request.args.get('cons_P1', 0))
@@ -725,23 +761,12 @@ def proposal():
     otros = float(request.args.get('otros', 0))
     CIA = request.args.get('CIA')
     producto_CIA = request.args.get('producto_CIA')
-    mes_facturacion = request.args.get('mes_facturacion')
+    mes_facturacion = request.args.get('mes_facturacion') #EJEMPLO FORMATO 2023-11-29, DEBE SER ASI, PORQUE SI NO NO SE CONVIERTE BIEN.
     FEE = request.args.get('FEE')
-    IVA = int(request.args.get('IVA', 0))
-     #tipo_consumo: mensual o anual; metodo: fijo o indexado
-    
-
+    IVA = float(request.args.get('IVA', 0))
 
     mes_facturacion = datetime.strptime(mes_facturacion, '%Y-%m-%d')
-    datos_anuales = session["datos"]
-    df_anuales = pd.DataFrame(datos_anuales)
 
-    cons_anual_P1 = df_anuales["Consumo anual P1"][0]
-    cons_anual_P2 = df_anuales["Consumo anual P2"][0]
-    cons_anual_P3 = df_anuales["Consumo anual P3"][0]
-    potencia_contratada_anual_P1 = df_anuales["P1"][0]
-    potencia_contratada_anual_P2 = df_anuales["P2"][0]
-    Distribuidora = df_anuales["Distribuidora"][0] #PARA FULLSTACK
 
 
     #-----------------------------------------------Filtro mensual/anual fija------------------------------------------------------------------------
@@ -773,7 +798,7 @@ def proposal():
 
 
     # Calcula la fecha máxima para cada combinación única de Sistema, Tarifa, Compañía y Fee
-    fecha_max_por_grupo = index_price_anual.groupby(['Sistema', 'tarifa', 'cia', 'fee'])['mes'].max()
+    fecha_max_por_grupo = index_price_anual.groupby(['sistema', 'tarifa', 'cia', 'fee'])['mes'].max()
 
     # Filtra los datos para los últimos 12 meses para cada grupo
     df_ult_12_meses = pd.DataFrame()
@@ -789,12 +814,12 @@ def proposal():
 
     # Calcula las medias para cada conjunto único de Sistema, Tarifa, Compañía y Fee
     df_medias_index_12 = df_ult_12_meses.groupby(['sistema', 'tarifa', 'cia', 'fee']).agg({
-        'P1': 'mean',
-        'P2': 'mean',
-        'P3': 'mean',
-        'P4': 'mean',
-        'P5': 'mean',
-        'P6': 'mean'
+        'p1': 'mean',
+        'p2': 'mean',
+        'p3': 'mean',
+        'p4': 'mean',
+        'p5': 'mean',
+        'p6': 'mean'
     }).reset_index()
 
     # Puedes renombrar las columnas si es necesario
@@ -819,15 +844,26 @@ def proposal():
         if Metodo=='Fijo':
             # funciones de cálculo importes
             opcion_barata_mens_fijo = encontrar_opcion_mas_barata_mens_fijo(2,df_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-            return jsonify(opcion_barata_mens_fijo)
-          
-         #------------------------------------------Mensual Indexado--------------------------------------------------
+            return opcion_barata_mens_fijo
+        
+        #------------------------------------------Mensual Indexado--------------------------------------------------
         elif Metodo=='Indexado':
             opcion_barata_mens_index = encontrar_opcion_mas_barata_mens_index(2,filas_mas_cercanas,index_power_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento,descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
             return jsonify(opcion_barata_mens_index)
 
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
     elif Tipo_consumo=='Consumo anual':
+
+        datos_anuales = session["datos"]
+        df_anuales = pd.DataFrame(datos_anuales)
+
+        cons_anual_P1 = df_anuales["Consumo anual P1"][0]
+        cons_anual_P2 = df_anuales["Consumo anual P2"][0]
+        cons_anual_P3 = df_anuales["Consumo anual P3"][0]
+        potencia_contratada_anual_P1 = df_anuales["P1"][0]
+        potencia_contratada_anual_P2 = df_anuales["P2"][0]
+        Distribuidora = df_anuales["Distribuidora"][0] #PARA FULLSTACK
+
         #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
         if Metodo=='Fijo':
 
@@ -835,8 +871,8 @@ def proposal():
             return jsonify(opcion_barata_anual_fijo)
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
         elif Metodo=='Indexado':
-             opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(2,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1,cons_anual_P2,cons_anual_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
-             return jsonify(opcion_barata_anual_index)
+            opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(2,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1,cons_anual_P2,cons_anual_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
+            return jsonify(opcion_barata_anual_index)
 
 
 # # 3./proposals/chart: recibe los datos de factura, datos anuales y calcula los 5 mejores resultados, devuelve la gráfica con los % de ahorro de cada compañía y el ahorro total (€)
@@ -901,12 +937,12 @@ def proposalschart(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_
 
     # Calcula las medias para cada conjunto único de Sistema, Tarifa, Compañía y Fee
     df_medias_index_12 = df_ult_12_meses.groupby(['sistema', 'tarifa', 'cia', 'fee']).agg({
-        'P1': 'mean',
-        'P2': 'mean',
-        'P3': 'mean',
-        'P4': 'mean',
-        'P5': 'mean',
-        'P6': 'mean'
+        'p1': 'mean',
+        'p2': 'mean',
+        'p3': 'mean',
+        'p4': 'mean',
+        'p5': 'mean',
+        'p6': 'mean'
     }).reset_index()
 
     # Puedes renombrar las columnas si es necesario
