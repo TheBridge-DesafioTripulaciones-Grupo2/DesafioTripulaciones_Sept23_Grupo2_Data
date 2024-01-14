@@ -35,9 +35,9 @@ columns_and_types = [
     ('p4_p', 'DOUBLE PRECISION'),
     ('p5_p', 'DOUBLE PRECISION'),
     ('p6_p', 'DOUBLE PRECISION'),
-    ('p1_e', 'TEXT'),
-    ('p2_e', 'TEXT'),
-    ('p3_e', 'TEXT'),
+    ('p1_e', 'DOUBLE PRECISION'),
+    ('p2_e', 'DOUBLE PRECISION'),
+    ('p3_e', 'DOUBLE PRECISION'),
     ('p4_e', 'TEXT'),
     ('p5_e', 'TEXT'),
     ('p6_e', 'TEXT')

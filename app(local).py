@@ -105,14 +105,14 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
         if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
             min_cost_dict[row['cia']] = importe_total_factura_mens
 
-        opciones = [{
+    opciones = [{
         'CIA': cia,
         'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
         'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
-    } for cia, min_cost in min_cost_dict.items()]
+        } for cia, min_cost in min_cost_dict.items()]
 
     # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)
@@ -132,14 +132,19 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
                 'Porcentaje de ahorro': [f"{porcentaje_ahorro:.1f}%"]
             })
 
-            # Convierte el DataFrame a cadena JSON
-            resultados_json = resultados_df.to_json(orient='records', force_ascii=False)
 
-            # Utiliza jsonify para devolver la respuesta JSON
-            return jsonify(resultados_json)
+            resultados = resultados_df.to_json(orient='records', force_ascii=False)
+
+
+            return jsonify(resultados)
     
     elif endpoint==3:
-        return jsonify({'Precio actual': importe_total_factura_mens_actual, 'Opciones más baratas': opciones_mas_baratas}), opciones_mas_baratas
+        resultados_df = pd.DataFrame({'Precio actual': importe_total_factura_mens_actual, 'Opciones más baratas': opciones_mas_baratas})
+        
+        resultados = resultados_df.to_json(orient='records', force_ascii=False)
+        
+        
+        return jsonify(resultados),opciones_mas_baratas
 
 #--------------------------------------------------------Mensual indexado------------------------------------------------------------------------
 
@@ -194,7 +199,7 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
             min_cost_dict[row['cia']] = importe_total_factura_mens
 
    
-    # Create a list with the minimum cost entries for each 'CIA' and calculate savings for each option
+        # Create a list with the minimum cost entries for each 'CIA' and calculate savings for each option
     opciones = [{
         'CIA': cia,
         'FEE': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0],
@@ -216,18 +221,27 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
 
     if endpoint == 2:
-        return jsonify({
+
+
+        resultados_df = pd.DataFrame({
             'Precio actual': importe_total_factura_mens_actual,
             'Opción más barata': opcion_barata,
             'Ahorro': ahorro_euros,
             'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%"
         })
 
+        resultados = resultados_df.to_json(orient='records', force_ascii=False)
+        return jsonify(resultados)
+
     elif endpoint == 3:
-        return jsonify({
+        resultados_df = pd.DataFrame({
             'Precio actual': importe_total_factura_mens_actual,
             'Opciones más baratas': opciones_mas_baratas
         })
+
+        resultados = resultados_df.to_json(orient='records', force_ascii=False)
+
+        return jsonify(resultados),opciones_mas_baratas
 
 #------------------------------------------------------------ANUAL FIJO-----------------------------------------------------------------
 
@@ -309,18 +323,25 @@ def  encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1,cons_a
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_anual_actual)*100,2)
 
     if endpoint == 2:
-        return jsonify({
+        resultado_df = pd.DataFrame({
             'Precio actual': importe_total_factura_anual_actual,
             'Opción más barata': opcion_barata,
             'Ahorro': ahorro_euros,
             'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%"
         })
 
+        resultados = resultado_df.to_json(orient='records', force_ascii=False)
+        return jsonify(resultados)
+
     elif endpoint == 3:
-        return jsonify({
+        resultado_df = pd.DataFrame({
             'Precio actual': importe_total_factura_anual_actual,
             'Opciones más baratas': opciones_mas_baratas
-        }), opciones_mas_baratas
+        })
+        
+        resultados = resultado_df.to_json(orient='records', force_ascii=False)
+        return jsonify(resultados), opciones_mas_baratas
+
 
 #-------------------------------------------------------ANUAL INDEXADO----------------------------------------------------
 
@@ -399,20 +420,25 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_anual_actual)*100,2)
 
     if endpoint == 2:
-        response_data = {
+        response_data = pd.DataFrame({
             'Precio actual': importe_total_factura_anual_actual,
             'Opción más barata': opcion_barata,
             'Ahorro': ahorro_euros,
             'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%"
-        }
-        return jsonify(response_data)
+        })
+
+        resultados = response_data.to_json(orient='records', force_ascii=False)
+
+        return jsonify(resultados)
 
     elif endpoint == 3:
-        response_data = {
+        response_data = pd.DataFrame({
             'Precio actual': importe_total_factura_anual_actual,
             'Opciones más baratas': opciones_mas_baratas
-        }
-        return jsonify(response_data)
+        })
+
+        resultados = response_data.to_json(orient='records', force_ascii=False)
+        return jsonify(resultados)
 
 #--------------------------------FUNCIÓN WEBSCRAPING-------------------------------------------------------------------------------------------------------------------------------
 
@@ -740,7 +766,7 @@ def anual_data():
 # 2./proposal: recibe los datos de factura, datos anuales, la compañía, modelo, etc, realiza los cálculos y devuelve todos los datos de la propuesta en concreto
 @app.route('/proposal', methods=['GET'])
 def proposal():
-
+    
     Tipo_consumo = request.args.get('Tipo_consumo')
     Metodo = request.args.get('Metodo')
     cons_P1 = float(request.args.get('cons_P1', 0))
@@ -849,13 +875,39 @@ def proposal():
         #------------------------------------------Mensual Indexado--------------------------------------------------
         elif Metodo=='Indexado':
             opcion_barata_mens_index = encontrar_opcion_mas_barata_mens_index(2,filas_mas_cercanas,index_power_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento,descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
-            return jsonify(opcion_barata_mens_index)
+            return opcion_barata_mens_index
 
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
     elif Tipo_consumo=='Consumo anual':
-
         datos_anuales = session["datos"]
-        df_anuales = pd.DataFrame(datos_anuales)
+        datos_anuales ={
+        "CUPS": "ES0031104629924014ZJ",
+        "Municipio": "Jerez de la Frontera",
+        "Provincia": "Cádiz",
+        "Código Postal": 11408,
+        "Tarifa": "2.0TD",
+        "Consumo anual": 3.613,
+        "Consumo anual P1": 834.0,
+        "Consumo anual P2": 955.0,
+        "Consumo anual P3": 1824.0,
+        "Consumo anual P4": "0 KWh",
+        "Consumo anual P5": "0 KWh",
+        "Consumo anual P6": "0 KWh",
+        "P1": 3.45,
+        "P2": 3.45,
+        "P3": "",
+        "P4": "",
+        "P5": "",
+        "P6": "",
+        "Distribuidora": "ENDESA DISTRIBUCION ELECTRICA, S.L.",
+        "Cambio Comercializadora": 1692403200000,
+        "Cambio BIE": 1161734400000,
+        "1X230": "Tensión",
+        "Cambio Contrato": 1622419200000
+        }
+        indice = range(len(datos_anuales))
+        
+        df_anuales = pd.DataFrame(datos_anuales,index=indice)
 
         cons_anual_P1 = df_anuales["Consumo anual P1"][0]
         cons_anual_P2 = df_anuales["Consumo anual P2"][0]
@@ -868,11 +920,11 @@ def proposal():
         if Metodo=='Fijo':
 
             opcion_barata_anual_fijo=encontrar_opcion_mas_barata_anual_fijo(2,df_filtrado,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
-            return jsonify(opcion_barata_anual_fijo)
+            return opcion_barata_anual_fijo
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
         elif Metodo=='Indexado':
             opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(2,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1,cons_anual_P2,cons_anual_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
-            return jsonify(opcion_barata_anual_index)
+            return opcion_barata_anual_index
 
 
 # # 3./proposals/chart: recibe los datos de factura, datos anuales y calcula los 5 mejores resultados, devuelve la gráfica con los % de ahorro de cada compañía y el ahorro total (€)
@@ -986,10 +1038,6 @@ def proposalschart(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_
         elif Metodo=='Indexado':
              opciones_baratas_anual_index=encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
              return jsonify(opciones_baratas_anual_index)
-
-
-
-
 
 
 if __name__ == "__main__":
