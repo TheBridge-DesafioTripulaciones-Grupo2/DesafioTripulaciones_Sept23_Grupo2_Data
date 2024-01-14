@@ -655,6 +655,17 @@ def webscraping(CUPS_input):
     df[columnas_numericas] = df[columnas_numericas].apply(pd.to_numeric, errors='coerce')
     columnas_fecha = ["Cambio Comercializadora", "Cambio BIE", "Cambio Contrato"]
     df[columnas_fecha] = df[columnas_fecha].apply(pd.to_datetime, errors='coerce')
+
+    df['Consumo anual'] = df['Consumo anual'].str.split().str[0]
+    df['Consumo anual P1'] = df['Consumo anual P1'].str.split().str[0]
+    df['Consumo anual P2'] = df['Consumo anual P2'].str.split().str[0]
+    df['Consumo anual P3'] = df['Consumo anual P3'].str.split().str[0]
+
+    df[["Consumo anual","Consumo anual P1","Consumo anual P2","Consumo anual P3","P1","P2","Distribuidora"]]
+
+    df[["Consumo anual","Consumo anual P1","Consumo anual P2","Consumo anual P3"]] = df[["Consumo anual","Consumo anual P1","Consumo anual P2","Consumo anual P3"]].astype(float)
+
+
     resultados_anuales= df.to_json(orient='records', lines=True,force_ascii=False,)
 
     return resultados_anuales
@@ -675,7 +686,7 @@ def home():
 @app.route('/anualdata/<string:CUPS_input>', methods=['GET'])
 def anual_data(CUPS_input):
     datos_anuales=webscraping(CUPS_input)
-   
+    session["datos"] = datos_anuales
 #----------------------------------------------------------SEGUNDO ENDPOINT----------------------------------------------------------
 
 # 2./proposal: recibe los datos de factura, datos anuales, la compañía, modelo, etc, realiza los cálculos y devuelve todos los datos de la propuesta en concreto
@@ -683,7 +694,17 @@ def anual_data(CUPS_input):
 def proposal(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,descuento,descuento_potencia,potencia_contratada_P1,
               potencia_contratada_P2,dias,precio_potencia_dia_P1,precio_potencia_dia_P2,impuesto_electrico,alquiler_equipo,otros,#Tipo_sistema,Tipo_tarifa,
               CIA,producto_CIA,mes_facturacion,FEE,IVA): #tipo_consumo: mensual o anual; metodo: fijo o indexado
-    
+    datos_anuales = session["datos"]
+    df_anuales = pd.DataFrame(datos_anuales)
+
+    cons_anual_P1 = df_anuales["Consumo anual P1"][0]
+    cons_anual_P2 = df_anuales["Consumo anual P2"][0]
+    cons_anual_P3 = df_anuales["Consumo anual P3"][0]
+    potencia_contratada_anual_P1 = df_anuales["P1"][0]
+    potencia_contratada_anual_P2 = df_anuales["P2"][0]
+    Distribuidora = df_anuales["Distribuidora"][0] #PARA FULLSTACK
+
+
     #-----------------------------------------------Filtro mensual/anual fija------------------------------------------------------------------------
 
     #mensual utiliza la fixed price, la filtramos para peninsula y 2.0
@@ -771,11 +792,11 @@ def proposal(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,pre
         #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
         if Metodo=='Fijo':
 
-            opcion_barata_anual_fijo=encontrar_opcion_mas_barata_anual_fijo(2,df_filtrado,cons_P1,cons_P2,cons_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_P1,potencia_contratada_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
+            opcion_barata_anual_fijo=encontrar_opcion_mas_barata_anual_fijo(2,df_filtrado,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
             return jsonify(opcion_barata_anual_fijo)
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
         elif Metodo=='Indexado':
-             opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(2,df_medindx12_penins_2,index_power_filtrado_anual,cons_P1,cons_P2,cons_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_P1,potencia_contratada_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
+             opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(2,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1,cons_anual_P2,cons_anual_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
              return jsonify(opcion_barata_anual_index)
 
 
