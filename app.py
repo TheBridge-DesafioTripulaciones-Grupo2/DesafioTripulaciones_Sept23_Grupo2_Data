@@ -808,6 +808,17 @@ def proposalschart(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_
               potencia_contratada_P2,dias,precio_potencia_dia_P1,precio_potencia_dia_P2,impuesto_electrico,alquiler_equipo,otros,#Tipo_sistema,Tipo_tarifa,
               CIA,producto_CIA,mes_facturacion,FEE,IVA): #tipo_consumo: mensual o anual; metodo: fijo o indexado
     
+    datos_anuales = session["datos"]
+    df_anuales = pd.DataFrame(datos_anuales)
+
+    cons_anual_P1 = df_anuales["Consumo anual P1"][0]
+    cons_anual_P2 = df_anuales["Consumo anual P2"][0]
+    cons_anual_P3 = df_anuales["Consumo anual P3"][0]
+    potencia_contratada_anual_P1 = df_anuales["P1"][0]
+    potencia_contratada_anual_P2 = df_anuales["P2"][0]
+    Distribuidora = df_anuales["Distribuidora"][0] #PARA FULLSTACK
+
+
     #-----------------------------------------------Filtro mensual/anual fija------------------------------------------------------------------------
     #mensual utiliza la fixed price, la filtramos para peninsula y 2.0
     condiciones_sistema_tarifa = (df_fixed['sistema'] == 'PENINSULA') & (df_fixed['tarifa'] == '2.0TD')# & (df['PRODUCTO'] == 'FIJO')
@@ -892,11 +903,11 @@ def proposalschart(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_
         #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
         if Metodo=='Fijo':
 
-            opcion_barata_anual_fijo=encontrar_opcion_mas_barata_anual_fijo(3,df_filtrado,cons_P1,cons_P2,cons_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_P1,potencia_contratada_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
+            opcion_barata_anual_fijo=encontrar_opcion_mas_barata_anual_fijo(3,df_filtrado,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
             return jsonify(opcion_barata_anual_fijo)
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
         elif Metodo=='Indexado':
-             opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_P1,cons_P2,cons_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_P1,potencia_contratada_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
+             opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
              return jsonify(opcion_barata_anual_index)
 
 
