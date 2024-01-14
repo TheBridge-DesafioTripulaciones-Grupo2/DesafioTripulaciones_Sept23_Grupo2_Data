@@ -15,14 +15,6 @@ db_params = {
     'user': 'postgres',
     'password': 'cristian99'
 }
-"""
-# Conectar a la base de datos
-
-engine = create_engine(f'postgresql+psycopg2://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}/{db_params["database"]}')
-df.to_sql('fixed_price', engine, if_exists='replace', index=False)
-
-engine.dispose()"""
-
 
 conn = psycopg2.connect(**db_params)
 cursor = conn.cursor()
