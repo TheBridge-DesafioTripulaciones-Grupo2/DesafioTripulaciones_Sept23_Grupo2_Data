@@ -16,32 +16,16 @@ import psycopg2
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
-
+app.secret_key = 's3cr3t0'
 #------------------------------------------------------------Conectamos y sacamos los datos de la database---------------------------------------------------------
 
-db_params = {
-    'host': '34.78.249.103',
-    'database': 'postgres',
-    'user': 'postgres',
-    'password': 'cristian99'
-}
-
-conn = psycopg2.connect(**db_params)
-cursor = conn.cursor()
 
 
-consulta_fixed = "SELECT * FROM fixed_price"
-consulta_indexed = "SELECT * FROM indexed_price"
-consulta_power = "SELECT * FROM indexed_price_power"
-
-df_fixed = pd.read_sql_query(consulta_fixed, conn)
-index_price = pd.read_sql_query(consulta_indexed, conn)
-index_power = pd.read_sql_query(consulta_power, conn)
+df_fixed = pd.read_csv("./data/processed/fixed_price.csv")
+index_price = pd.read_csv("./data/processed/indexed_price.csv")
+index_power = pd.read_csv("./data/processed/indexed_price_power.csv")
 index_price_anual = index_price.copy()
 index_price_power_anual = index_power.copy()
-
-cursor.close()
-conn.close()
 
 #-------------------------------------------------------------
 
@@ -438,7 +422,7 @@ def webscraping(CUPS_input):
 
     inspeccionar_CUPS = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/div[2]/md-tabs/md-tabs-content-wrapper/md-tab-content/div/md-card/div/form/div[4]/button')
     inspeccionar_CUPS.click()
-
+    time.sleep(2)
     tabla_CUPS = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/div[2]/md-tabs/md-tabs-content-wrapper/md-tab-content/div/md-content/md-card/md-table-container/table/tbody/tr[1]/td[3]/input')
     
     placeholder_CUPS = tabla_CUPS.get_attribute('placeholder')
@@ -533,7 +517,7 @@ def webscraping(CUPS_input):
     placeholder_ultimo_cambio_BIE = placeholder_ultimo_cambio_BIE.strip()
     placeholder_tension = placeholder_tension.strip()
     placeholder_distribuidora_Contrato = placeholder_distribuidora_Contrato.strip()
-
+    time.sleep(1)
     valor_CUPS = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/div[2]/md-tabs/md-tabs-content-wrapper/md-tab-content/div/md-content/md-card/md-table-container/table/tbody/tr[2]/td[3]')
     valor_placeholder_CUPS = valor_CUPS.text #valor del cups
 
@@ -676,6 +660,8 @@ def webscraping(CUPS_input):
     placeholder_distribuidora_Contrato = placeholder_distribuidora_Contrato.strip()
 
     df = pd.DataFrame([dicc])
+    df["P1"] = df["P1"].str.replace(",",".")
+    df["P2"] = df["P2"].str.replace(",",".")
     columnas_numericas = ["Código Postal", "P1", "P2"]
     df[columnas_numericas] = df[columnas_numericas].apply(pd.to_numeric, errors='coerce')
     columnas_fecha = ["Cambio Comercializadora", "Cambio BIE", "Cambio Contrato"]
@@ -686,7 +672,6 @@ def webscraping(CUPS_input):
     df['Consumo anual P2'] = df['Consumo anual P2'].str.split().str[0]
     df['Consumo anual P3'] = df['Consumo anual P3'].str.split().str[0]
 
-    df[["Consumo anual","Consumo anual P1","Consumo anual P2","Consumo anual P3","P1","P2","Distribuidora"]]
 
     df[["Consumo anual","Consumo anual P1","Consumo anual P2","Consumo anual P3"]] = df[["Consumo anual","Consumo anual P1","Consumo anual P2","Consumo anual P3"]].astype(float)
 
@@ -708,17 +693,46 @@ def home():
 
 
 # 1./anualdata: recibe un CUPS, realiza el webscraping y devuelve los datos anuales
-@app.route('/anualdata/<string:CUPS_input>', methods=['GET'])
-def anual_data(CUPS_input):
+@app.route('/anualdata', methods=['GET'])
+def anual_data():
+    CUPS_input = request.args.get('CUPS_input', '')
     datos_anuales=webscraping(CUPS_input)
     session["datos"] = datos_anuales
+    return datos_anuales
 #----------------------------------------------------------SEGUNDO ENDPOINT----------------------------------------------------------
 
 # 2./proposal: recibe los datos de factura, datos anuales, la compañía, modelo, etc, realiza los cálculos y devuelve todos los datos de la propuesta en concreto
-@app.route('/proposal/<string:Tipo_consumo>/<string:Metodo>/<float:cons_P1>/,<float:cons_P2>/<float:cons_P3>/<float:precio_P1>/<float:precio_P2>/<float:precio_P3>/<float:descuento>/<float:descuento_potencia>/<float:potencia_contratada_P1>/<float:potencia_contratada_P2>/<float:dias>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P2>/<float:impuesto_electrico>/<float:alquiler_equipo>/<float:otros>/<string:Tipo_sistema>/<string:Tipo_tarifa>/<string:CIA>/<string:producto_CIA>/<timestamp:mes_facturacion>/<string:FEE>/<int:IVA>', methods=['GET'])
-def proposal(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,descuento,descuento_potencia,potencia_contratada_P1,
-              potencia_contratada_P2,dias,precio_potencia_dia_P1,precio_potencia_dia_P2,impuesto_electrico,alquiler_equipo,otros,#Tipo_sistema,Tipo_tarifa,
-              CIA,producto_CIA,mes_facturacion,FEE,IVA): #tipo_consumo: mensual o anual; metodo: fijo o indexado
+@app.route('/proposal', methods=['GET'])
+def proposal():
+    # Obtén los parámetros de la cadena de consulta
+    Tipo_consumo = request.args.get('Tipo_consumo')
+    Metodo = request.args.get('Metodo')
+    cons_P1 = float(request.args.get('cons_P1', 0))
+    cons_P2 = float(request.args.get('cons_P2', 0))
+    cons_P3 = float(request.args.get('cons_P3', 0))
+    precio_P1 = float(request.args.get('precio_P1', 0))
+    precio_P2 = float(request.args.get('precio_P2', 0))
+    precio_P3 = float(request.args.get('precio_P3', 0))
+    descuento = float(request.args.get('descuento', 0))
+    descuento_potencia = float(request.args.get('descuento_potencia', 0))
+    potencia_contratada_P1 = float(request.args.get('potencia_contratada_P1', 0))
+    potencia_contratada_P2 = float(request.args.get('potencia_contratada_P2', 0))
+    dias = float(request.args.get('dias', 0))
+    precio_potencia_dia_P1 = float(request.args.get('precio_potencia_dia_P1', 0))
+    precio_potencia_dia_P2 = float(request.args.get('precio_potencia_dia_P2', 0))
+    impuesto_electrico = float(request.args.get('impuesto_electrico', 0))
+    alquiler_equipo = float(request.args.get('alquiler_equipo', 0))
+    otros = float(request.args.get('otros', 0))
+    CIA = request.args.get('CIA')
+    producto_CIA = request.args.get('producto_CIA')
+    mes_facturacion = request.args.get('mes_facturacion')
+    FEE = request.args.get('FEE')
+    IVA = int(request.args.get('IVA', 0))
+     #tipo_consumo: mensual o anual; metodo: fijo o indexado
+    
+
+
+    mes_facturacion = datetime.strptime(mes_facturacion, '%Y-%m-%d')
     datos_anuales = session["datos"]
     df_anuales = pd.DataFrame(datos_anuales)
 
@@ -828,11 +842,11 @@ def proposal(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,pre
 # # 3./proposals/chart: recibe los datos de factura, datos anuales y calcula los 5 mejores resultados, devuelve la gráfica con los % de ahorro de cada compañía y el ahorro total (€)
 
 #----------------------------------------------------------TERCER ENDPOINT----------------------------------------------------------
-@app.route('/proposals/chart/<string:Tipo_consumo>/<string:Metodo>/<float:cons_P1>/,<float:cons_P2>/<float:cons_P3>/<float:precio_P1>/<float:precio_P2>/<float:precio_P3>/<float:descuento>/<float:descuento_potencia>/<float:potencia_contratada_P1>/<float:potencia_contratada_P2>/<float:dias>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P2>/<float:impuesto_electrico>/<float:alquiler_equipo>/<float:otros>/<string:Tipo_sistema>/<string:Tipo_tarifa>/<string:CIA>/<string:producto_CIA>/<timestamp:mes_facturacion>/<string:FEE>/<int:IVA>', methods=['GET'])
+@app.route('/proposals/chart/<string:Tipo_consumo>/<string:Metodo>/<float:cons_P1>/,<float:cons_P2>/<float:cons_P3>/<float:precio_P1>/<float:precio_P2>/<float:precio_P3>/<float:descuento>/<float:descuento_potencia>/<float:potencia_contratada_P1>/<float:potencia_contratada_P2>/<float:dias>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P2>/<float:impuesto_electrico>/<float:alquiler_equipo>/<float:otros>/<string:Tipo_sistema>/<string:Tipo_tarifa>/<string:CIA>/<string:producto_CIA>/<string:mes_facturacion>/<string:FEE>/<int:IVA>', methods=['GET'])
 def proposalschart(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,descuento,descuento_potencia,potencia_contratada_P1,
               potencia_contratada_P2,dias,precio_potencia_dia_P1,precio_potencia_dia_P2,impuesto_electrico,alquiler_equipo,otros,#Tipo_sistema,Tipo_tarifa,
               CIA,producto_CIA,mes_facturacion,FEE,IVA): #tipo_consumo: mensual o anual; metodo: fijo o indexado
-    
+    mes_facturacion = datetime.strptime(mes_facturacion, '%Y-%m-%d')
     datos_anuales = session["datos"]
     df_anuales = pd.DataFrame(datos_anuales)
 
