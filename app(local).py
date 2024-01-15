@@ -22,19 +22,19 @@ app.config["DEBUG"] = True
 app.secret_key = 's3cr3t0'
 #------------------------------------------------------------Conectamos y sacamos los datos de la database---------------------------------------------------------
 
-"""db_params = {
+db_params = {
     'host': '34.78.249.103',
     'database': 'postgres',
     'user': 'postgres',
     'password': 'cristian99'
-}"""
+}
 
-db_params = {
+"""db_params = {
     'host': 'localhost',
     'database': 'testeo',
     'user': 'postgres',
     'password': 'planta'
-}
+}"""
 
 conn = psycopg2.connect(**db_params)
 cursor = conn.cursor()
@@ -67,48 +67,49 @@ index_price_power_anual = index_power.copy()"""
 
 
 #-------------------------------------------------------------CREAR GRAFICA-------------------------------------------------------
-def grafica(df_grafica):
+def grafica(df_grafica_mens, df_grafica_anual):
+
 
     # Creamos un dataframe para cada barra a representar, en este caso mensual y anual
-    customdata_mensual = df_grafica[['FEE', 'PRODUCTO_CIA', 'PorcentajeAhorro', 'Ahorro']]
-    customdata_anual = df_grafica[['FEE', 'PRODUCTO_CIA', 'Porcentaje_Anual_Comparacion', 'Ahorro_Anual']]
+    customdata_mensual = df_grafica_mens[['FEE', 'PRODUCTO_CIA', 'PorcentajeAhorro', 'Ahorro']]
+    customdata_anual = df_grafica_anual[['FEE', 'PRODUCTO_CIA', 'PorcentajeAhorro', 'Ahorro']]
 
     # Creación de barras por separado
     bar_mensual = px.bar(
-        data_frame=df_grafica,
+        data_frame=df_grafica_mens,
         x='CIA', 
-        y='Ahorro_Mensual',
+        y='Ahorro',
         title='Porcentajes de ahorro Mensual por Empresa',
         labels={'value': 'Porcentaje de Ahorro', 'CIA':'Compañía'},
         hover_data={
             'CIA': True, 
             'FEE': True,
-            'Porcentaje de ahorro': True,
+            'PorcentajeAhorro': True,
             'PRODUCTO_CIA': True,
-            'Ahorro en euros': True
+            'Ahorro': True
         },
         custom_data=customdata_mensual,
     )
 
     bar_anual = px.bar(
-        data_frame=df_grafica,
+        data_frame=df_grafica_anual,
         x='CIA', 
-        y='Ahorro_Anual',
+        y='Ahorro',
         title='Porcentajes de ahorro Anual por Empresa',
         labels={'value': 'Porcentaje de Ahorro', 'CIA':'Compañía'},
         hover_data={
             'CIA': True, 
             'FEE': True,
-            'Porcentaje de ahorro': True,
+            'PorcentajeAhorro': True,
             'PRODUCTO_CIA': True,
-            'Ahorro en euros': True
+            'Ahorro': True
         },
         custom_data=customdata_anual,
     )
 
     # Actualizar el color de las barras
     bar_mensual.update_traces(marker_color='#1F1D1C', name='Mensual')
-    bar_anual.update_traces(marker_color='#FF8523', name='Anual')
+    bar_anual.update_traces(marker_color='#701516', name='Anual')
 
     # Crear figura combinando las dos barras
     fig = go.Figure(data=bar_mensual.data + bar_anual.data)
@@ -140,6 +141,8 @@ def grafica(df_grafica):
     fig.update_layout(bargap=0.45)  # Ajustar espacio entre las barras
 
     fig.show()
+
+    return fig
 
 #-------------------------------------------------------------MENSUAL FIJO--------------------------------------------------------
 
@@ -318,10 +321,10 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
         return jsonify(resultados)
 
     elif endpoint == 3:
-        resultados_df = pd.DataFrame({
+        resultados_df = pd.DataFrame([{
             'Precio actual': importe_total_factura_mens_actual,
             'Opciones más baratas': opciones_mas_baratas
-        })
+        }])
 
         resultados = resultados_df.to_json(orient='records', force_ascii=False)
 
@@ -417,10 +420,10 @@ def encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1_scrap,c
         return jsonify(resultados)
 
     elif endpoint == 3:
-        resultado_df = pd.DataFrame({
+        resultado_df = pd.DataFrame([{
             'Precio actual': importe_total_factura_anual_actual,
             'Opciones más baratas': opciones_mas_baratas
-        })
+        }])
         
         resultados = resultado_df.to_json(orient='records', force_ascii=False)
         return jsonify(resultados), opciones_mas_baratas
@@ -518,10 +521,10 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
         return jsonify(resultados)
 
     elif endpoint == 3:
-        response_data = pd.DataFrame({
+        response_data = pd.DataFrame([{
             'Precio actual': importe_total_factura_anual_actual,
             'Opciones más baratas': opciones_mas_baratas
-        })
+        }])
 
         resultados = response_data.to_json(orient='records', force_ascii=False)
         return jsonify(resultados)
@@ -966,9 +969,9 @@ def proposal():
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
     elif Tipo_consumo_form=='Consumo anual':
         
-        datos_anuales = session["datos"]
+        #datos_anuales = session["datos"]
         
-        """datos_anuales = {
+        datos_anuales = {
         "CUPS": "ES0031104629924014ZJ",
         "Municipio": "Jerez de la Frontera",
         "Provincia": "Cádiz",
@@ -992,7 +995,7 @@ def proposal():
         "Cambio BIE": 1161734400000,
         "1X230": "Tensión",
         "Cambio Contrato": 1622419200000
-        }"""
+        }
     
         datos_anuales = session["datos"]
         datos_anuales_objeto = json.loads(datos_anuales)
@@ -1026,32 +1029,70 @@ def proposal():
 @app.route('/proposals/chart', methods=['GET'])
 def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
     
-    Tipo_consumo = request.args.get('Tipo_consumo')
-    Metodo = request.args.get('Metodo')
-    cons_P1 = float(request.args.get('cons_P1', 0))
-    cons_P2 = float(request.args.get('cons_P2', 0))
-    cons_P3 = float(request.args.get('cons_P3', 0))
-    precio_P1 = float(request.args.get('precio_P1', 0))
-    precio_P2 = float(request.args.get('precio_P2', 0))
-    precio_P3 = float(request.args.get('precio_P3', 0))
-    descuento = float(request.args.get('descuento', 0))
-    descuento_potencia = float(request.args.get('descuento_potencia', 0))
-    potencia_contratada_P1 = float(request.args.get('potencia_contratada_P1', 0))
-    potencia_contratada_P2 = float(request.args.get('potencia_contratada_P2', 0))
-    dias = float(request.args.get('dias', 0))
-    precio_potencia_dia_P1 = float(request.args.get('precio_potencia_dia_P1', 0))
-    precio_potencia_dia_P2 = float(request.args.get('precio_potencia_dia_P2', 0))
-    impuesto_electrico = float(request.args.get('impuesto_electrico', 0))
-    alquiler_equipo = float(request.args.get('alquiler_equipo', 0))
-    otros = float(request.args.get('otros', 0))
-    CIA = request.args.get('CIA')
-    producto_CIA = request.args.get('producto_CIA')
-    mes_facturacion = request.args.get('mes_facturacion') #EJEMPLO FORMATO 2023-11-29, DEBE SER ASI, PORQUE SI NO NO SE CONVIERTE BIEN.
-    FEE = request.args.get('FEE')
-    IVA = float(request.args.get('IVA', 0))
-    mes_facturacion = datetime.strptime(mes_facturacion, '%Y-%m-%d')
+    Tipo_consumo_form = request.args.get('Tipo_consumo')
+    Metodo_form = request.args.get('Metodo')
+    cons_P1_form = float(request.args.get('cons_P1', 0))
+    cons_P2_form = float(request.args.get('cons_P2', 0))
+    cons_P3_form = float(request.args.get('cons_P3', 0))
+    precio_P1_form = float(request.args.get('precio_P1', 0))
+    precio_P2_form = float(request.args.get('precio_P2', 0))
+    precio_P3_form = float(request.args.get('precio_P3', 0))
+    descuento_form = float(request.args.get('descuento', 0))
+    descuento_potencia_form = float(request.args.get('descuento_potencia', 0))
+    potencia_contratada_P1_form = float(request.args.get('potencia_contratada_P1', 0))
+    potencia_contratada_P2_form = float(request.args.get('potencia_contratada_P2', 0))
+    dias_form = float(request.args.get('dias', 0))
+    precio_potencia_dia_P1_form = float(request.args.get('precio_potencia_dia_P1', 0))
+    precio_potencia_dia_P2_form = float(request.args.get('precio_potencia_dia_P2', 0))
+    impuesto_electrico_form = float(request.args.get('impuesto_electrico', 0))
+    alquiler_equipo_form = float(request.args.get('alquiler_equipo', 0))
+    otros_form = float(request.args.get('otros', 0))
+    CIA_form = request.args.get('CIA')
+    producto_CIA_form = request.args.get('producto_CIA')
+    mes_facturacion_form = request.args.get('mes_facturacion') #EJEMPLO FORMATO 2023-11-29, DEBE SER ASI, PORQUE SI NO NO SE CONVIERTE BIEN.
+    FEE_form = request.args.get('FEE')
+    IVA_form = float(request.args.get('IVA', 0))
+    mes_facturacion_form = datetime.strptime(mes_facturacion_form, '%Y-%m-%d')
 
+    #datos_anuales = session["datos"]
+    
+    datos_anuales = {
+    "CUPS": "ES0031104629924014ZJ",
+    "Municipio": "Jerez de la Frontera",
+    "Provincia": "Cádiz",
+    "Código Postal": 11408,
+    "Tarifa": "2.0TD",
+    "Consumo anual": 3.613,
+    "Consumo anual P1": 834.0,
+    "Consumo anual P2": 955.0,
+    "Consumo anual P3": 1824.0,
+    "Consumo anual P4": "0 KWh",
+    "Consumo anual P5": "0 KWh",
+    "Consumo anual P6": "0 KWh",
+    "P1": 3.45,
+    "P2": 3.45,
+    "P3": "",
+    "P4": "",
+    "P5": "",
+    "P6": "",
+    "Distribuidora": "ENDESA DISTRIBUCION ELECTRICA, S.L.",
+    "Cambio Comercializadora": 1692403200000,
+    "Cambio BIE": 1161734400000,
+    "1X230": "Tensión",
+    "Cambio Contrato": 1622419200000
+    }
 
+    datos_anuales = session["datos"]
+    datos_anuales_objeto = json.loads(datos_anuales)
+    df_anuales = pd.DataFrame(datos_anuales_objeto,index=[0])
+    
+
+    cons_anual_P1_scrap = df_anuales.at[0, "Consumo anual P1"]
+    cons_anual_P2_scrap = df_anuales.at[0,"Consumo anual P2"]
+    cons_anual_P3_scrap = df_anuales.at[0,"Consumo anual P3"]
+    potencia_contratada_anual_P1_scrap = df_anuales.at[0,"P1"]
+    potencia_contratada_anual_P2_scrap = df_anuales.at[0,"P2"]
+    Distribuidora_scrap = df_anuales.at[0,"Distribuidora"] #PARA FULLSTACK
 
 
     #-----------------------------------------------Filtro mensual/anual fija------------------------------------------------------------------------
@@ -1120,44 +1161,45 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
 
 
     #----------------------------------------Calculadora de consumo mensual----------------------------------------------
-    if Tipo_consumo=='Consumo mensual':
+    if Tipo_consumo_form=='Consumo mensual':
         #------------------------------------------Mensual Fijo-------------------------------------------------------
-        if Metodo=='Fijo':
+        if Metodo_form=='Fijo':
             # funciones de cálculo importes
-            opciones_baratas_mens_fijo, opciones_grafica = encontrar_opcion_mas_barata_mens_fijo(3,df_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-            grafica(opciones_grafica)
+
+            opciones_baratas_mens_fijo, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_fijo(3,df_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form, descuento_potencia_form,impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            opciones_baratas_anual_fijo, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_fijo(3,df_filtrado,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
             return opciones_baratas_mens_fijo
             
          #------------------------------------------Mensual Indexado--------------------------------------------------
-        elif Metodo=='Indexado':
-            opciones_baratas_mens_index, opciones_grafica = encontrar_opcion_mas_barata_mens_index(3,filas_mas_cercanas,index_power_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-            grafica(opciones_grafica)
+        elif Metodo_form=='Indexado':
+
+            opciones_baratas_mens_index, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_index(3,filas_mas_cercanas,index_power_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form,descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            opciones_baratas_anual_index, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            
+            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
             return opciones_baratas_mens_index
 
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
-    elif Tipo_consumo=='Consumo anual':
+    elif Tipo_consumo_form=='Consumo anual':
 
 
-        datos_anuales = session["datos"]
-        df_anuales = pd.DataFrame([datos_anuales])
-
-        cons_anual_P1 = df_anuales["Consumo anual P1"]
-        cons_anual_P2 = df_anuales["Consumo anual P2"]
-        cons_anual_P3 = df_anuales["Consumo anual P3"]
-        potencia_contratada_anual_P1 = df_anuales["P1"]
-        potencia_contratada_anual_P2 = df_anuales["P2"]
-        Distribuidora = df_anuales["Distribuidora"] #PARA FULLSTACK
+        
         #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
-        if Metodo=='Fijo':
+        if Metodo_form=='Fijo':
 
-            opciones_baratas_anual_fijo, opciones_grafica =encontrar_opcion_mas_barata_anual_fijo(3,df_filtrado,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-            grafica(opciones_grafica)
+            opciones_baratas_mens_fijo, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_fijo(3,df_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form, descuento_potencia_form,impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            opciones_baratas_anual_fijo, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_fijo(3,df_filtrado,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            
+            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
             return opciones_baratas_anual_fijo
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
-        elif Metodo=='Indexado':
-             opciones_baratas_anual_index, opciones_grafica=encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-             grafica(opciones_grafica)
-             return opciones_baratas_anual_index
+        elif Metodo_form=='Indexado':
+            opciones_baratas_mens_index, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_index(3,filas_mas_cercanas,index_power_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form,descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            opciones_baratas_anual_index, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+             
+            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
+            return opciones_baratas_anual_index
 
 
 if __name__ == "__main__":
