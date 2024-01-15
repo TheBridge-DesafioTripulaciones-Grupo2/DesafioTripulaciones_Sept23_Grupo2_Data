@@ -187,15 +187,20 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
         sumatorio_total_pago_energia = calcular_energia_mens_fijo(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
         sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
         importe_total_factura_mens = round(calcular_total_factura_mens_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
-
         
         if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
             min_cost_dict[row['cia']] = importe_total_factura_mens
+            p1e_barata=precio_mens_P1
+            p2e_barata=precio_mens_P2
+            p3e_barata=precio_mens_P3
+            p1p_barata=precio_potencia_dia_P1
+            p2p_barata=precio_potencia_dia_P2
+
 
     opciones = [{
         'CIA': cia,
         'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
-        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0], #duplica valores
+        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
@@ -203,7 +208,6 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
 
     # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)
-
     idx_opcion_mas_barata = df_opciones['CostoTotal'].idxmin()
     
     opcion_barata=df_opciones.iloc[idx_opcion_mas_barata]
@@ -212,19 +216,19 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
     ahorro_euros=round(importe_total_factura_mens_actual-opcion_barata['CostoTotal'],2)
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
 
-    if endpoint==2:
-            resultados_df = pd.DataFrame({
-                'Precio actual': [importe_total_factura_mens_actual],
-                'Opción más barata': [opcion_barata],
-                'Ahorro': [ahorro_euros],
-                'Porcentaje de ahorro': [f"{porcentaje_ahorro:.1f}%"]
-            })
+    if endpoint == 2:
 
-
-            resultados = resultados_df.to_json(orient='records', force_ascii=False)
-
-
-            return jsonify(resultados)
+        dict1={
+            'Precio actual': importe_total_factura_mens_actual,
+            'Ahorro': ahorro_euros,
+            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
+        } 
+        dict2=opcion_barata.to_dict()
+        dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
+            'p1p':p1p_barata, 'p2p':p2p_barata}
+        dict1.update(dict2)
+        dict1.update(dict3)
+        return dict1
     
     elif endpoint==3:
         resultados_df = pd.DataFrame([{'Precio actual': importe_total_factura_mens_actual, 'Opciones más baratas': opciones_mas_baratas}])
@@ -287,6 +291,11 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
 
         if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
             min_cost_dict[row['cia']] = importe_total_factura_mens
+            p1e_barata=precio_mens_P1
+            p2e_barata=precio_mens_P2
+            p3e_barata=precio_mens_P3
+            p1p_barata=precio_potencia_dia_P1
+            p2p_barata=precio_potencia_dia_P2
 
     opciones = [{
         'CIA': cia,
@@ -307,18 +316,19 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
     opciones_mas_baratas = df_opciones.nsmallest(5, 'CostoTotal')
     ahorro_euros=round(importe_total_factura_mens_actual-opcion_barata['CostoTotal'],2)
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
-
     if endpoint == 2:
 
-        resultados_df = pd.DataFrame({
+        dict1={
             'Precio actual': importe_total_factura_mens_actual,
-            'Opción más barata': opcion_barata,
             'Ahorro': ahorro_euros,
-            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%"
-        })
-
-        resultados = resultados_df.to_json(orient='records', force_ascii=False)
-        return jsonify(resultados)
+            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
+        } 
+        dict2=opcion_barata.to_dict()
+        dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
+            'p1p':p1p_barata, 'p2p':p2p_barata}
+        dict1.update(dict2)
+        dict1.update(dict3)
+        return dict1
 
     elif endpoint == 3:
         resultados_df = pd.DataFrame([{
@@ -329,7 +339,6 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
         resultados = resultados_df.to_json(orient='records', force_ascii=False)
 
         return jsonify(resultados),opciones_mas_baratas
-
 #------------------------------------------------------------ANUAL FIJO-----------------------------------------------------------------
 
 # funciones de cálculo importes
