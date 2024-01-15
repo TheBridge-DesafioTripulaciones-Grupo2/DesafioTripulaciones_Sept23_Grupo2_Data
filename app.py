@@ -83,6 +83,9 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
 
     for index,row in df.iterrows():
 
+        precio_mens_P1, precio_mens_P2, precio_mens_P3 = row['p1_e'], row['p2_e'], row['p3_e']
+        precio_potencia_dia_P1, precio_potencia_dia_P2 = row['p1_p'], row['p2_p']
+
         sumatorio_total_pago_energia = calcular_energia_mens_fijo(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
         sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
         importe_total_factura_mens = round(calcular_total_factura_mens_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
@@ -95,11 +98,11 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
         opciones = [{
         'CIA': cia,
         'FEE': df.loc[df['CIA'] == cia, 'FEE'].values[0],
-        'PRODUCTO_CIA': df.loc[df['CIA'] == cia, 'PRODUCTO_CIA'].values[0],
+        'PRODUCTO_CIA': df.loc[df['CIA'] == cia, 'PRODUCTO_CIA'].values[0], #duplica valores
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
-    } for cia, min_cost in min_cost_dict.items()]
+    } for cia, min_cost in min_cost_dict.items()]  
 
     # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)

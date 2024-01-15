@@ -9,6 +9,7 @@ import time
 import pandas as pd
 from datetime import datetime
 import psycopg2
+import pymysql
 from key import usuario,contrasena
 
 
@@ -88,7 +89,6 @@ def calcular_total_factura_mens_fijo(sumatorio_total_pago_energia,sumatorio_tota
 def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens_P2,cons_mens_P3,precio_mens_P1,precio_mens_P2,precio_mens_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, dto_p,impuesto_electrico, otros, alquiler_equipo, IVA): #df_filtrado
     opciones = []
 
-   
     sumatorio_total_pago_energia = calcular_energia_mens_fijo(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
     sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, dto_p)
     importe_total_factura_mens_actual = round(calcular_total_factura_mens_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
@@ -96,19 +96,21 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
 
     for index,row in df.iterrows():
 
+        precio_mens_P1, precio_mens_P2, precio_mens_P3 = row['p1_e'], row['p2_e'], row['p3_e']
+        precio_potencia_dia_P1, precio_potencia_dia_P2 = row['p1_p'], row['p2_p']
+
         sumatorio_total_pago_energia = calcular_energia_mens_fijo(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
         sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
         importe_total_factura_mens = round(calcular_total_factura_mens_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
 
         
-        # Update the minimum cost for each 'CIA'
         if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
             min_cost_dict[row['cia']] = importe_total_factura_mens
 
     opciones = [{
         'CIA': cia,
         'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
-        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
+        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0], #duplica valores
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
@@ -116,6 +118,7 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
 
     # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)
+
     idx_opcion_mas_barata = df_opciones['CostoTotal'].idxmin()
     
     opcion_barata=df_opciones.iloc[idx_opcion_mas_barata]
@@ -190,19 +193,19 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
 
     for index,row in df_combinado.iterrows():
  
+        precio_mens_P1, precio_mens_P2, precio_mens_P3 = row['p1_e'], row['p2_e'], row['p3_e']
+        precio_potencia_dia_P1, precio_potencia_dia_P2 = row['p1_p'], row['p2_p']
+        
         sumatorio_total_pago_energia = calcular_energia_mens_index(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
         sumatorio_total_pago_potencia = calcular_potencia_mens_index(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
-
         importe_total_factura_mens = round(calcular_total_factura_mens_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
 
         if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
             min_cost_dict[row['cia']] = importe_total_factura_mens
 
-   
-        # Create a list with the minimum cost entries for each 'CIA' and calculate savings for each option
     opciones = [{
         'CIA': cia,
-        'FEE': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0],
+        'FEE': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0], #PINTA MAL
         'PRODUCTO_CIA': df_combinado.loc[df_combinado['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
@@ -222,7 +225,6 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
 
     if endpoint == 2:
 
-
         resultados_df = pd.DataFrame({
             'Precio actual': importe_total_factura_mens_actual,
             'Opción más barata': opcion_barata,
@@ -231,7 +233,7 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
         })
 
         resultados = resultados_df.to_json(orient='records', force_ascii=False)
-        return jsonify(resultados)
+        return resultados
 
     elif endpoint == 3:
         resultados_df = pd.DataFrame({
@@ -241,7 +243,7 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
 
         resultados = resultados_df.to_json(orient='records', force_ascii=False)
 
-        return jsonify(resultados),opciones_mas_baratas
+        return resultados,opciones_mas_baratas
 
 #------------------------------------------------------------ANUAL FIJO-----------------------------------------------------------------
 
@@ -294,7 +296,7 @@ def  encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1,cons_a
         
         sumatorio_total_pago_energia = calcular_energia_anual_fijo(cons_anual_P1, cons_anual_P2, cons_anual_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
         sumatorio_total_pago_potencia = calcular_potencia_anual_fijo(potencia_contratada_P1, potencia_contratada_P2, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
-        impuesto_electrico, otros,alquiler_equipo, IVA = 0.33, 1.27,0.88, 0.05  # CAMBIAR A INPUT DE LA FACTURA
+        # impuesto_electrico, otros,alquiler_equipo, IVA = impuesto_electrico, otros,alquiler_equipo, IVA  # CAMBIAR A INPUT FORMULARIO
 
         importe_total_factura_anual = round(calcular_total_factura_anual_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
 
@@ -389,6 +391,9 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
 
 
     for index,row in df_combinado.iterrows():
+
+        precio_mens_P1, precio_mens_P2, precio_mens_P3 = row['p1_e'], row['p2_e'], row['p3_e']
+        precio_potencia_dia_P1, precio_potencia_dia_P2 = row['p1_p'], row['p2_p']
 
         sumatorio_total_pago_energia = calcular_energia_anual_index(cons_anual_P1, cons_anual_P2, cons_anual_P3, precio_media_P1, precio_media_P2, precio_media_P3, descuento)
         sumatorio_total_pago_potencia = calcular_potencia_anual_index(potencia_contratada_P1, potencia_contratada_P2, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
