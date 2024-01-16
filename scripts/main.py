@@ -13,7 +13,7 @@ import plotly.express as px
 import json
 import plotly.graph_objects as go
 from key import usuario,contrasena
-
+import os
 
 
 
@@ -550,10 +550,11 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
         return jsonify(resultados)
 
 #--------------------------------FUNCIÓN WEBSCRAPING-------------------------------------------------------------------------------------------------------------------------------
-
 def webscraping(CUPS_input):
     # CUPS_input=request.args.get('CUPS_input')
-    service = Service(executable_path='chromedriver.exe')
+    ruta=os.getcwd()
+    service = Service(executable_path=ruta + '\\'+ 'chromedriver.exe')
+    options = webdriver.ChromeOptions()
     options = webdriver.ChromeOptions()
 
     driver = webdriver.Chrome(service=service, options=options)
