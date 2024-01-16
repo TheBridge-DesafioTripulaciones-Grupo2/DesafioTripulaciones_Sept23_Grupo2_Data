@@ -17,6 +17,7 @@ import os
 
 
 
+
 app = Flask(__name__)
 app.config["DEBUG"] = True
 app.secret_key = 's3cr3t0'
@@ -53,9 +54,9 @@ index_price_power_anual = index_power.copy()
 cursor.close()
 conn.close()
 
-"""df_fixed = pd.read_csv("./data/processed/fixed_price.csv")
-index_price = pd.read_csv("./data/processed/indexed_price.csv")
-index_power = pd.read_csv("./data/processed/indexed_price_power.csv")
+"""df_fixed = pd.read_csv("../data/processed/fixed_price.csv")
+index_price = pd.read_csv("../data/processed/indexed_price.csv")
+index_power = pd.read_csv("../data/processed/indexed_price_power.csv")
 
 
 df_fixed.columns = df_fixed.columns.str.lower()
@@ -553,17 +554,10 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
 
 def webscraping(CUPS_input):
     # CUPS_input=request.args.get('CUPS_input')
-<<<<<<< HEAD:scripts/app.py
-
-    ruta = os.getcwd()
-    ruta = ruta +'\\' + 'chromedriver.exe'
-    service = Service(executable_path=ruta)
-=======
     
     dir_path = os.path.dirname(os.path.realpath(__file__))
 
     service = Service(executable_path=(os.path.join(dir_path, ".", "chromedriver.exe")))
->>>>>>> ca83f4d94032a6cfe3989be63bddbfadf5ec2806:scripts/app_prueba.py
     options = webdriver.ChromeOptions()
 
     driver = webdriver.Chrome(service=service, options=options)
@@ -1199,7 +1193,7 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
             opciones_baratas_mens_fijo, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_fijo(3,df_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form, descuento_potencia_form,impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
             opciones_baratas_anual_fijo, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_fijo(3,df_filtrado,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
             figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
-            return jsonify(figura,opciones_baratas_anual_fijo)
+            return opciones_baratas_mens_fijo
             
          #------------------------------------------Mensual Indexado--------------------------------------------------
         elif Metodo_form=='Indexado':
