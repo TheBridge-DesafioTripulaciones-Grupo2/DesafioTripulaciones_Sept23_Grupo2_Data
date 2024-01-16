@@ -555,7 +555,7 @@ def webscraping(CUPS_input):
     # CUPS_input=request.args.get('CUPS_input')
 
     ruta = os.getcwd()
-    ruta = ruta +'\\chromedriver.exe'
+    ruta = ruta +'\\' + 'chromedriver.exe'
     service = Service(executable_path=ruta)
     options = webdriver.ChromeOptions()
 
