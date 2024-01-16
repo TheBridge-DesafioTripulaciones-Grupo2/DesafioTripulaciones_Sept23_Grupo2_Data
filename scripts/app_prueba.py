@@ -554,8 +554,10 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
 
 def webscraping(CUPS_input):
     # CUPS_input=request.args.get('CUPS_input')
-    ruta=os.getcwd()
-    service = Service(executable_path=ruta + '\\'+ 'chromedriver.exe')
+    
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+
+    service = Service(executable_path=(os.path.join(dir_path, ".", "chromedriver.exe")))
     options = webdriver.ChromeOptions()
 
     driver = webdriver.Chrome(service=service, options=options)
