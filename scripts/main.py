@@ -53,9 +53,9 @@ index_price_power_anual = index_power.copy()
 cursor.close()
 conn.close()
 
-"""df_fixed = pd.read_csv("./data/processed/fixed_price.csv")
-index_price = pd.read_csv("./data/processed/indexed_price.csv")
-index_power = pd.read_csv("./data/processed/indexed_price_power.csv")
+"""df_fixed = pd.read_csv("../data/processed/fixed_price.csv")
+index_price = pd.read_csv("../data/processed/indexed_price.csv")
+index_power = pd.read_csv("../data/processed/indexed_price_power.csv")
 
 
 df_fixed.columns = df_fixed.columns.str.lower()

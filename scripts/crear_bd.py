@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import io
 
-ruta = "./data/processed/fixed_price.csv"
+ruta = "../data/processed/fixed_price.csv"
 df = pd.read_csv(ruta)
 #df.columns = df.columns.str.lower()
 
