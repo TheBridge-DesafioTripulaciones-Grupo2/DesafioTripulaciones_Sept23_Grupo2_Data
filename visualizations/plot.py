@@ -57,7 +57,7 @@ bar_anual = px.bar(
 
 # Actualizar el color de las barras
 bar_mensual.update_traces(marker_color='#1F1D1C', name='Mensual')
-bar_anual.update_traces(marker_color='#FF8523', name='Anual')
+bar_anual.update_traces(marker_color='#701516', name='Anual')
 
 # Crear figura combinando las dos barras
 fig = go.Figure(data=bar_mensual.data + bar_anual.data)
@@ -67,23 +67,23 @@ fig.update_layout(
     barmode='group',
     width=800,
     legend=dict(title='', orientation='h', y=-0.12, x=0, traceorder='grouped'),
-    hoverlabel=dict(bgcolor='#FAFAFA')
+    hoverlabel=dict(bgcolor='#CCC8C8')
+)
+fig.update_traces(
+    hovertemplate='<b style="color:#701516; font-size:16px">FEE: %{customdata[0]}</b><br>'
+                  '<b style="color:#701516;">PRODUCTO_CIA:</b> %{customdata[1]}<br>'
+                  '<b style="color:#701516;">Ahorro en euros:</b> %{customdata[2]:,.2f}<br>'
+                  '<b style="color:#701516;">Porcentaje de ahorro:</b> %{customdata[3]}<br>', 
+    hoverlabel=dict(bgcolor='#FFFFFF'),
 )
 
-fig.update_traces(
-    hovertemplate='<b style="color:#1F1D1C; font-size:16px">FEE: %{customdata[0]}</b><br>'
-                  '<b style="color:#1F1D1C;">PRODUCTO_CIA:</b> %{customdata[1]}<br>'
-                  '<b style="color:#1F1D1C;">Ahorro en euros:</b> %{customdata[2]:,.2f}'
-                  '<b style="color:#1F1D1C;">Porcentaje de ahorro:</b> %{customdata[3]}<br>', 
-    hoverlabel=dict(bgcolor='#FAFAFA'),
-)
 fig.update_layout(
     legend=dict(title='', orientation='h', y=-0.12, x=0, traceorder='grouped'),
-    yaxis=dict(range=[0, 50], tickvals=[10, 20, 30, 40, 50], ticktext=['10%', '20%', '30%', '40%', '50%'],showgrid=True),  # Ampliar el eje y al 50% y especificar los valores deseados
+    yaxis=dict(range=[0, 50], tickvals=[10, 20, 30, 40, 50], ticktext=['10%', '20%', '30%', '40%', '50%'],showgrid=True, gridcolor='#CCC8C8'),  # Ampliar el eje y al 50% y especificar los valores deseados
     margin=dict(l=50, r=150, b=50, t=50),  # Ajustar los márgenes
-    xaxis=dict(showgrid=True), 
+    xaxis=dict(showgrid=True, gridcolor='#CCC8C8'), 
     grid=dict(xside='top', yside='right'), 
-    plot_bgcolor="#FAFAFA"  # Color de fondo del gráfico
+    plot_bgcolor="#FFFFFF"  # Color de fondo del gráfico
 )
 fig.update_xaxes(categoryorder='array', categoryarray=['Mensual', 'Anual'])  # Personalizar el orden de las barras
 fig.update_layout(bargap=0.45)  # Ajustar espacio entre las barras
