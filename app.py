@@ -526,7 +526,7 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
     ahorro_euros=round(importe_total_factura_anual_actual-opcion_barata['CostoTotal'],2)
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_anual_actual)*100,2)
 
-    if endpoint == 2: #CHECK
+    if endpoint == 2:
             dict1={
                     'Precio actual': importe_total_factura_anual_actual,
                     'Ahorro': ahorro_euros,
@@ -989,9 +989,9 @@ def proposal():
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
     elif Tipo_consumo_form=='Consumo anual':
         
-        #datos_anuales = session["datos"]
+        datos_anuales = session["datos"]
         
-        datos_anuales = {
+        """datos_anuales = {
         "CUPS": "ES0031104629924014ZJ",
         "Municipio": "Jerez de la Frontera",
         "Provincia": "Cádiz",
@@ -1015,7 +1015,7 @@ def proposal():
         "Cambio BIE": 1161734400000,
         "1X230": "Tensión",
         "Cambio Contrato": 1622419200000
-        }
+        }"""
     
         datos_anuales = session["datos"]
         datos_anuales_objeto = json.loads(datos_anuales)
@@ -1074,9 +1074,9 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
     IVA_form = float(request.args.get('IVA', 0))
     mes_facturacion_form = datetime.strptime(mes_facturacion_form, '%Y-%m-%d')
 
-    #datos_anuales = session["datos"]
+    datos_anuales = session["datos"]
     
-    datos_anuales = {
+    """datos_anuales = {
     "CUPS": "ES0031104629924014ZJ",
     "Municipio": "Jerez de la Frontera",
     "Provincia": "Cádiz",
@@ -1100,7 +1100,7 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
     "Cambio BIE": 1161734400000,
     "1X230": "Tensión",
     "Cambio Contrato": 1622419200000
-    }
+    }"""
 
     datos_anuales = session["datos"]
     datos_anuales_objeto = json.loads(datos_anuales)
@@ -1195,9 +1195,7 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
         elif Metodo_form=='Indexado':
 
             opciones_baratas_mens_index, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_index(3,filas_mas_cercanas,index_power_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form,descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
-            opciones_baratas_anual_index, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
-            
-            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
+
             return opciones_baratas_mens_index
 
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
@@ -1215,10 +1213,9 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
             return opciones_baratas_anual_fijo
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
         elif Metodo_form=='Indexado':
-            opciones_baratas_mens_index, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_index(3,filas_mas_cercanas,index_power_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form,descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
-            opciones_baratas_anual_index, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+           
+            opciones_baratas_anual_index = encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
              
-            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
             return opciones_baratas_anual_index
 
 
