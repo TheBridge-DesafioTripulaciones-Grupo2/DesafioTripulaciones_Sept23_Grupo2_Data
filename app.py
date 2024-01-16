@@ -8,15 +8,18 @@ from selenium.webdriver.common.by import By
 import time
 import pandas as pd
 from datetime import datetime
-from key import usuario,contrasena
 import psycopg2
-# from datos_dummy import bd
+import plotly.express as px
+import json
+import plotly.graph_objects as go
+from key import usuario,contrasena
+
 
 
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
-
+app.secret_key = 's3cr3t0'
 #------------------------------------------------------------Conectamos y sacamos los datos de la database---------------------------------------------------------
 
 db_params = {
@@ -25,6 +28,13 @@ db_params = {
     'user': 'postgres',
     'password': 'cristian99'
 }
+
+"""db_params = {
+    'host': 'localhost',
+    'database': 'testeo',
+    'user': 'postgres',
+    'password': 'planta'
+}"""
 
 conn = psycopg2.connect(**db_params)
 cursor = conn.cursor()
@@ -43,7 +53,96 @@ index_price_power_anual = index_power.copy()
 cursor.close()
 conn.close()
 
-#-------------------------------------------------------------
+"""df_fixed = pd.read_csv("./data/processed/fixed_price.csv")
+index_price = pd.read_csv("./data/processed/indexed_price.csv")
+index_power = pd.read_csv("./data/processed/indexed_price_power.csv")
+
+
+df_fixed.columns = df_fixed.columns.str.lower()
+index_price.columns = index_price.columns.str.lower()
+index_power.columns = index_power.columns.str.lower()
+
+index_price_anual = index_price.copy()
+index_price_power_anual = index_power.copy()"""
+
+
+#-------------------------------------------------------------CREAR GRAFICA-------------------------------------------------------
+def grafica(df_grafica_mens, df_grafica_anual):
+
+
+    # Creamos un dataframe para cada barra a representar, en este caso mensual y anual
+    customdata_mensual = df_grafica_mens[['FEE', 'PRODUCTO_CIA', 'PorcentajeAhorro', 'Ahorro']]
+    customdata_anual = df_grafica_anual[['FEE', 'PRODUCTO_CIA', 'PorcentajeAhorro', 'Ahorro']]
+
+    # Creación de barras por separado
+    bar_mensual = px.bar(
+        data_frame=df_grafica_mens,
+        x='CIA', 
+        y='Ahorro',
+        title='Porcentajes de ahorro Mensual por Empresa',
+        labels={'value': 'Porcentaje de Ahorro', 'CIA':'Compañía'},
+        hover_data={
+            'CIA': True, 
+            'FEE': True,
+            'PorcentajeAhorro': True,
+            'PRODUCTO_CIA': True,
+            'Ahorro': True
+        },
+        custom_data=customdata_mensual,
+    )
+
+    bar_anual = px.bar(
+        data_frame=df_grafica_anual,
+        x='CIA', 
+        y='Ahorro',
+        title='Porcentajes de ahorro Anual por Empresa',
+        labels={'value': 'Porcentaje de Ahorro', 'CIA':'Compañía'},
+        hover_data={
+            'CIA': True, 
+            'FEE': True,
+            'PorcentajeAhorro': True,
+            'PRODUCTO_CIA': True,
+            'Ahorro': True
+        },
+        custom_data=customdata_anual,
+    )
+
+    # Actualizar el color de las barras
+    bar_mensual.update_traces(marker_color='#1F1D1C', name='Mensual')
+    bar_anual.update_traces(marker_color='#701516', name='Anual')
+
+    # Crear figura combinando las dos barras
+    fig = go.Figure(data=bar_mensual.data + bar_anual.data)
+
+    # Actualizar el diseño del gráfico
+    fig.update_layout(
+        barmode='group',
+        width=800,
+        legend=dict(title='', orientation='h', y=-0.12, x=0, traceorder='grouped'),
+        hoverlabel=dict(bgcolor='#FAFAFA')
+    )
+
+    fig.update_traces(
+        hovertemplate='<b style="color:#1F1D1C; font-size:16px">FEE: %{customdata[0]}</b><br>'
+                    '<b style="color:#1F1D1C;">PRODUCTO_CIA:</b> %{customdata[1]}<br>'
+                    '<b style="color:#1F1D1C;">Ahorro en euros:</b> %{customdata[2]:,.2f}'
+                    '<b style="color:#1F1D1C;">Porcentaje de ahorro:</b> %{customdata[3]}<br>', 
+        hoverlabel=dict(bgcolor='#FAFAFA'),
+    )
+    fig.update_layout(
+        legend=dict(title='', orientation='h', y=-0.12, x=0, traceorder='grouped'),
+        yaxis=dict(range=[0, 50], tickvals=[10, 20, 30, 40, 50], ticktext=['10%', '20%', '30%', '40%', '50%'],showgrid=True),  # Ampliar el eje y al 50% y especificar los valores deseados
+        margin=dict(l=50, r=150, b=50, t=50),  # Ajustar los márgenes
+        xaxis=dict(showgrid=True), 
+        grid=dict(xside='top', yside='right'), 
+        plot_bgcolor="#FAFAFA"  # Color de fondo del gráfico
+    )
+    fig.update_xaxes(categoryorder='array', categoryarray=['Mensual', 'Anual'])  # Personalizar el orden de las barras
+    fig.update_layout(bargap=0.45)  # Ajustar espacio entre las barras
+
+    fig.show()
+
+    return fig
 
 #-------------------------------------------------------------MENSUAL FIJO--------------------------------------------------------
 
@@ -75,7 +174,6 @@ def calcular_total_factura_mens_fijo(sumatorio_total_pago_energia,sumatorio_tota
 def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens_P2,cons_mens_P3,precio_mens_P1,precio_mens_P2,precio_mens_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, dto_p,impuesto_electrico, otros, alquiler_equipo, IVA): #df_filtrado
     opciones = []
 
-   
     sumatorio_total_pago_energia = calcular_energia_mens_fijo(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
     sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, dto_p)
     importe_total_factura_mens_actual = round(calcular_total_factura_mens_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
@@ -89,20 +187,24 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
         sumatorio_total_pago_energia = calcular_energia_mens_fijo(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
         sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
         importe_total_factura_mens = round(calcular_total_factura_mens_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
-
         
-        # Update the minimum cost for each 'CIA'
-        if row['CIA'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['CIA']]:
-            min_cost_dict[row['CIA']] = importe_total_factura_mens
+        if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
+            min_cost_dict[row['cia']] = importe_total_factura_mens
+            p1e_barata=precio_mens_P1
+            p2e_barata=precio_mens_P2
+            p3e_barata=precio_mens_P3
+            p1p_barata=precio_potencia_dia_P1
+            p2p_barata=precio_potencia_dia_P2
 
-        opciones = [{
+
+    opciones = [{
         'CIA': cia,
-        'FEE': df.loc[df['CIA'] == cia, 'FEE'].values[0],
-        'PRODUCTO_CIA': df.loc[df['CIA'] == cia, 'PRODUCTO_CIA'].values[0], #duplica valores
+        'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
+        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
-    } for cia, min_cost in min_cost_dict.items()]  
+        } for cia, min_cost in min_cost_dict.items()]
 
     # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)
@@ -114,15 +216,27 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
     ahorro_euros=round(importe_total_factura_mens_actual-opcion_barata['CostoTotal'],2)
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
 
-    if endpoint==2:
-            return jsonify({
-                'Precio actual': importe_total_factura_mens_actual,
-                'Opción más barata': opcion_barata,
-                'Ahorro': ahorro_euros,
-                'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%"})
+    if endpoint == 2:
+
+        dict1={
+            'Precio actual': importe_total_factura_mens_actual,
+            'Ahorro': ahorro_euros,
+            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
+        } 
+        dict2=opcion_barata.to_dict()
+        dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
+            'p1p':p1p_barata, 'p2p':p2p_barata}
+        dict1.update(dict2)
+        dict1.update(dict3)
+        return dict1
     
     elif endpoint==3:
-        return jsonify({'Precio actual': importe_total_factura_mens_actual, 'Opciones más baratas': opciones_mas_baratas}), opciones_mas_baratas
+        resultados_df = pd.DataFrame([{'Precio actual': importe_total_factura_mens_actual, 'Opciones más baratas': opciones_mas_baratas}])
+        
+        resultados = resultados_df.to_json(orient='records', force_ascii=False)
+        
+        
+        return jsonify(resultados),opciones_mas_baratas
 
 #--------------------------------------------------------Mensual indexado------------------------------------------------------------------------
 
@@ -168,20 +282,25 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
 
     for index,row in df_combinado.iterrows():
  
+        precio_mens_P1, precio_mens_P2, precio_mens_P3 = row['p1_e'], row['p2_e'], row['p3_e']
+        precio_potencia_dia_P1, precio_potencia_dia_P2 = row['p1_p'], row['p2_p']
+        
         sumatorio_total_pago_energia = calcular_energia_mens_index(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
         sumatorio_total_pago_potencia = calcular_potencia_mens_index(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
-
         importe_total_factura_mens = round(calcular_total_factura_mens_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
 
-        if row['CIA'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['CIA']]:
-            min_cost_dict[row['CIA']] = importe_total_factura_mens
+        if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
+            min_cost_dict[row['cia']] = importe_total_factura_mens
+            p1e_barata=precio_mens_P1
+            p2e_barata=precio_mens_P2
+            p3e_barata=precio_mens_P3
+            p1p_barata=precio_potencia_dia_P1
+            p2p_barata=precio_potencia_dia_P2
 
-   
-    # Create a list with the minimum cost entries for each 'CIA' and calculate savings for each option
     opciones = [{
         'CIA': cia,
-        'FEE': df_combinado.loc[df_combinado['CIA'] == cia, 'FEE'].values[0],
-        'PRODUCTO_CIA': df_combinado.loc[df_combinado['CIA'] == cia, 'PRODUCTO_CIA'].values[0],
+        'FEE': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0], #PINTA MAL
+        'PRODUCTO_CIA': df_combinado.loc[df_combinado['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
@@ -197,24 +316,33 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
     opciones_mas_baratas = df_opciones.nsmallest(5, 'CostoTotal')
     ahorro_euros=round(importe_total_factura_mens_actual-opcion_barata['CostoTotal'],2)
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
-
     if endpoint == 2:
-        return jsonify({
+
+        dict1={
             'Precio actual': importe_total_factura_mens_actual,
-            'Opción más barata': opcion_barata,
             'Ahorro': ahorro_euros,
-            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%"
-        })
+            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
+        } 
+        dict2=opcion_barata.to_dict()
+        dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
+            'p1p':p1p_barata, 'p2p':p2p_barata}
+        dict1.update(dict2)
+        dict1.update(dict3)
+        return dict1
 
     elif endpoint == 3:
-        return jsonify({
+        resultados_df = pd.DataFrame([{
             'Precio actual': importe_total_factura_mens_actual,
             'Opciones más baratas': opciones_mas_baratas
-        })
+        }])
 
+        resultados = resultados_df.to_json(orient='records', force_ascii=False)
+
+        return jsonify(resultados),opciones_mas_baratas
 #------------------------------------------------------------ANUAL FIJO-----------------------------------------------------------------
 
 # funciones de cálculo importes
+
 def calcular_energia_anual_fijo(cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_mens_P1,precio_mens_P2,precio_mens_P3,descuento):
     # sumatorio_cons_mens=cons_mens_P1+cons_mens_P2+cons_mens_P3
     # cons_anual_P1,cons_anual_P2,cons_anual_P3 ==========>TIENEN QUE VENIR DEL SCRAPPING DE CANDELA POR EL CUPS
@@ -242,18 +370,17 @@ def calcular_total_factura_anual_fijo(sumatorio_total_pago_energia,sumatorio_tot
          +impuesto_electrico*12 + + alquiler_equipo*12 + otros*12)
     importe_total_factura_anual= bi_IVA * (1+IVA)
     return importe_total_factura_anual
-
-def  encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_mens_P1,precio_mens_P2,precio_mens_P3,potencia_contratada_P1,potencia_contratada_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento,dto_p, impuesto_electrico, otros, alquiler_equipo, IVA):
+#cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form
+def encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_scrap,potencia_contratada_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form,dto_p_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form):
 
     opciones = []
-
-    sumatorio_total_pago_energia = calcular_energia_anual_fijo(cons_anual_P1, cons_anual_P2, cons_anual_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
-    sumatorio_total_pago_potencia = calcular_potencia_anual_fijo(potencia_contratada_P1, potencia_contratada_P2, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
-    impuesto_electrico, otros, alquiler_equipo, IVA = 0.33, 1.27, 0.88, 0.05  # CAMBIAR A INPUT DE LA FACTURA
+    sumatorio_total_pago_energia = calcular_energia_anual_fijo(cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form, descuento_form)
+    sumatorio_total_pago_potencia = calcular_potencia_anual_fijo(potencia_contratada_P1_scrap, potencia_contratada_P2_scrap, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form,dto_p_form)
+    #impuesto_electrico, otros, alquiler_equipo, IVA = 0.33, 1.27, 0.88, 0.05  # CAMBIAR A INPUT DE LA FACTURA
 
     # print(sumatorio_total_pago_energia,sumatorio_total_pago_potencia)
 
-    importe_total_factura_anual_actual = round(calcular_total_factura_anual_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
+    importe_total_factura_anual_actual = round(calcular_total_factura_anual_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico_form, otros_form,alquiler_equipo_form, IVA_form),2)
     min_cost_dict = {}
 
     for index,row in df.iterrows():
@@ -261,21 +388,25 @@ def  encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1,cons_a
         precio_mens_P1, precio_mens_P2, precio_mens_P3 = row['p1_e'], row['p2_e'], row['p3_e']
         precio_potencia_dia_P1, precio_potencia_dia_P2 = row['p1_p'], row['p2_p']
         
-        sumatorio_total_pago_energia = calcular_energia_anual_fijo(cons_anual_P1, cons_anual_P2, cons_anual_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
-        sumatorio_total_pago_potencia = calcular_potencia_anual_fijo(potencia_contratada_P1, potencia_contratada_P2, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
-        impuesto_electrico, otros,alquiler_equipo, IVA = 0.33, 1.27,0.88, 0.05  # CAMBIAR A INPUT DE LA FACTURA
+        sumatorio_total_pago_energia = calcular_energia_anual_fijo(cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento_form)
+        sumatorio_total_pago_potencia = calcular_potencia_anual_fijo(potencia_contratada_P1_scrap, potencia_contratada_P2_scrap, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p_form)
+        # impuesto_electrico, otros,alquiler_equipo, IVA = impuesto_electrico, otros,alquiler_equipo, IVA  # CAMBIAR A INPUT FORMULARIO
 
-        importe_total_factura_anual = round(calcular_total_factura_anual_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
-
+        importe_total_factura_anual = round(calcular_total_factura_anual_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico_form, otros_form, alquiler_equipo_form,IVA_form),2)
         # Update the minimum cost for each 'CIA'
-        if row['CIA'] not in min_cost_dict or importe_total_factura_anual < min_cost_dict[row['CIA']]:
-            min_cost_dict[row['CIA']] = importe_total_factura_anual
+        if row['cia'] not in min_cost_dict or importe_total_factura_anual < min_cost_dict[row['cia']]:
+            min_cost_dict[row['cia']] = importe_total_factura_anual
+            p1e_barata=precio_mens_P1
+            p2e_barata=precio_mens_P2
+            p3e_barata=precio_mens_P3
+            p1p_barata=precio_potencia_dia_P1
+            p2p_barata=precio_potencia_dia_P2
 
  
     opciones = [{
         'CIA': cia,
-        'FEE': df.loc[df['CIA'] == cia, 'FEE'].values[0],
-        'PRODUCTO_CIA': df.loc[df['CIA'] == cia, 'PRODUCTO_CIA'].values[0],
+        'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
+        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_anual_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_anual_actual - min_cost) / importe_total_factura_anual_actual) * 100, 2)
@@ -291,19 +422,28 @@ def  encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1,cons_a
     ahorro_euros=round(importe_total_factura_anual_actual-opcion_barata['CostoTotal'],2)
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_anual_actual)*100,2)
 
-    if endpoint == 2:
-        return jsonify({
-            'Precio actual': importe_total_factura_anual_actual,
-            'Opción más barata': opcion_barata,
-            'Ahorro': ahorro_euros,
-            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%"
-        })
+    if endpoint == 2: #CHECK
+        dict1={
+                'Precio actual': importe_total_factura_anual_actual,
+                'Ahorro': ahorro_euros,
+                'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
+            } 
+        dict2=opcion_barata.to_dict()
+        dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
+            'p1p':p1p_barata, 'p2p':p2p_barata}
+        dict1.update(dict2)
+        dict1.update(dict3)
+        return dict1
 
     elif endpoint == 3:
-        return jsonify({
+        resultado_df = pd.DataFrame([{
             'Precio actual': importe_total_factura_anual_actual,
             'Opciones más baratas': opciones_mas_baratas
-        }), opciones_mas_baratas
+        }])
+        
+        resultados = resultado_df.to_json(orient='records', force_ascii=False)
+        return jsonify(resultados), opciones_mas_baratas
+
 
 #-------------------------------------------------------ANUAL INDEXADO----------------------------------------------------
 
@@ -334,38 +474,43 @@ def calcular_total_factura_anual_index(sumatorio_total_pago_energia,sumatorio_to
     importe_total_factura_anual= bi_IVA * (1+IVA)
     return importe_total_factura_anual
 
-def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_media_P1,precio_media_P2,precio_media_P3,potencia_contratada_P1,potencia_contratada_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento,dto_p, impuesto_electrico, otros, alquiler_equipo, IVA):
+def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form, precio_P2_form, precio_P3_form,potencia_contratada_P1_scrap,potencia_contratada_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form,dto_p_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form):
     opciones = []
 
     df_combinado = pd.merge(df_energia, df_potencia, on='cia',suffixes=["_e","_p"])
     df_combinado.dropna(axis=0,inplace=True)
+    #precio_media_P1, precio_media_P2, precio_media_P3 vienen del form
+    sumatorio_total_pago_energia = calcular_energia_anual_index(cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form, precio_P2_form, precio_P3_form, descuento_form)
+    sumatorio_total_pago_potencia = calcular_potencia_anual_index(potencia_contratada_P1_scrap, potencia_contratada_P2_scrap, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form,dto_p_form)
+    #impuesto_electrico, otros, alquiler_equipo, IVA = 0.33, 1.27, 0.88,0.05  # CAMBIAR A INPUT DE LA FACTURA
 
-    sumatorio_total_pago_energia = calcular_energia_anual_index(cons_anual_P1, cons_anual_P2, cons_anual_P3, precio_media_P1, precio_media_P2, precio_media_P3, descuento)
-    sumatorio_total_pago_potencia = calcular_potencia_anual_index(potencia_contratada_P1, potencia_contratada_P2, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
-    impuesto_electrico, otros, alquiler_equipo, IVA = 0.33, 1.27, 0.88,0.05  # CAMBIAR A INPUT DE LA FACTURA
-
-
-
-    importe_total_factura_anual_actual = round(calcular_total_factura_anual_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
+    importe_total_factura_anual_actual = round(calcular_total_factura_anual_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico_form, otros_form,alquiler_equipo_form, IVA_form),2)
     min_cost_dict = {}
 
 
     for index,row in df_combinado.iterrows():
 
-        sumatorio_total_pago_energia = calcular_energia_anual_index(cons_anual_P1, cons_anual_P2, cons_anual_P3, precio_media_P1, precio_media_P2, precio_media_P3, descuento)
-        sumatorio_total_pago_potencia = calcular_potencia_anual_index(potencia_contratada_P1, potencia_contratada_P2, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
-        importe_total_factura_anual_ppta = round(calcular_total_factura_anual_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
+        precio_mens_P1, precio_mens_P2, precio_mens_P3 = row['p1_e'], row['p2_e'], row['p3_e']
+        precio_potencia_dia_P1, precio_potencia_dia_P2 = row['p1_p'], row['p2_p']
+        
+        sumatorio_total_pago_energia = calcular_energia_anual_index(cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento_form)
+        sumatorio_total_pago_potencia = calcular_potencia_anual_index(potencia_contratada_P1_scrap, potencia_contratada_P2_scrap, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p_form)
+        importe_total_factura_anual_ppta = round(calcular_total_factura_anual_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico_form, otros_form,alquiler_equipo_form, IVA_form),2)
         
        # Update the minimum cost for each 'CIA'
-        if row['CIA'] not in min_cost_dict or importe_total_factura_anual_ppta < min_cost_dict[row['CIA']]:
-            min_cost_dict[row['CIA']] = importe_total_factura_anual_ppta
-
+        if row['cia'] not in min_cost_dict or importe_total_factura_anual_ppta < min_cost_dict[row['cia']]:
+            min_cost_dict[row['cia']] = importe_total_factura_anual_ppta
+            p1e_barata=precio_mens_P1
+            p2e_barata=precio_mens_P2
+            p3e_barata=precio_mens_P3
+            p1p_barata=precio_potencia_dia_P1
+            p2p_barata=precio_potencia_dia_P2
     
     # Create a list with the minimum cost entries for each 'CIA' and calculate savings for each option
     opciones = [{
         'CIA': cia,
-        'FEE': df_combinado.loc[df_combinado['CIA'] == cia, 'FEE'].values[0],
-        'PRODUCTO_CIA': df_combinado.loc[df_combinado['CIA'] == cia, 'PRODUCTO_CIA'].values[0],
+        'FEE': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0],
+        'PRODUCTO_CIA': df_combinado.loc[df_combinado['cia'] == cia, 'producto_cia'].values[0],
         'CostoTotal': min_cost,
         'Ahorro': round(importe_total_factura_anual_actual - min_cost, 2),
         'PorcentajeAhorro': round(((importe_total_factura_anual_actual - min_cost) / importe_total_factura_anual_actual) * 100, 2)
@@ -381,21 +526,28 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
     ahorro_euros=round(importe_total_factura_anual_actual-opcion_barata['CostoTotal'],2)
     porcentaje_ahorro= round((ahorro_euros/importe_total_factura_anual_actual)*100,2)
 
-    if endpoint == 2:
-        response_data = {
-            'Precio actual': importe_total_factura_anual_actual,
-            'Opción más barata': opcion_barata,
-            'Ahorro': ahorro_euros,
-            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%"
-        }
-        return jsonify(response_data)
+    if endpoint == 2: #CHECK
+            dict1={
+                    'Precio actual': importe_total_factura_anual_actual,
+                    'Ahorro': ahorro_euros,
+                    'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
+                } 
+            dict2=opcion_barata.to_dict()
+            dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
+                'p1p':p1p_barata, 'p2p':p2p_barata}
+            dict1.update(dict2)
+            dict1.update(dict3)
+            return dict1
+
 
     elif endpoint == 3:
-        response_data = {
+        response_data = pd.DataFrame([{
             'Precio actual': importe_total_factura_anual_actual,
             'Opciones más baratas': opciones_mas_baratas
-        }
-        return jsonify(response_data)
+        }])
+
+        resultados = response_data.to_json(orient='records', force_ascii=False)
+        return jsonify(resultados)
 
 #--------------------------------FUNCIÓN WEBSCRAPING-------------------------------------------------------------------------------------------------------------------------------
 
@@ -430,7 +582,7 @@ def webscraping(CUPS_input):
     formulario = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[1]/div/form/button')
     formulario.click()
 
-    time.sleep(3)
+    time.sleep(5)
     sips = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[1]/ul/li[3]/a')
     sips.click()
 
@@ -441,7 +593,7 @@ def webscraping(CUPS_input):
 
     inspeccionar_CUPS = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/div[2]/md-tabs/md-tabs-content-wrapper/md-tab-content/div/md-card/div/form/div[4]/button')
     inspeccionar_CUPS.click()
-
+    time.sleep(5)
     tabla_CUPS = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/div[2]/md-tabs/md-tabs-content-wrapper/md-tab-content/div/md-content/md-card/md-table-container/table/tbody/tr[1]/td[3]/input')
     
     placeholder_CUPS = tabla_CUPS.get_attribute('placeholder')
@@ -536,7 +688,7 @@ def webscraping(CUPS_input):
     placeholder_ultimo_cambio_BIE = placeholder_ultimo_cambio_BIE.strip()
     placeholder_tension = placeholder_tension.strip()
     placeholder_distribuidora_Contrato = placeholder_distribuidora_Contrato.strip()
-
+    time.sleep(1)
     valor_CUPS = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/div[2]/md-tabs/md-tabs-content-wrapper/md-tab-content/div/md-content/md-card/md-table-container/table/tbody/tr[2]/td[3]')
     valor_placeholder_CUPS = valor_CUPS.text #valor del cups
 
@@ -679,6 +831,8 @@ def webscraping(CUPS_input):
     placeholder_distribuidora_Contrato = placeholder_distribuidora_Contrato.strip()
 
     df = pd.DataFrame([dicc])
+    df["P1"] = df["P1"].str.replace(",",".")
+    df["P2"] = df["P2"].str.replace(",",".")
     columnas_numericas = ["Código Postal", "P1", "P2"]
     df[columnas_numericas] = df[columnas_numericas].apply(pd.to_numeric, errors='coerce')
     columnas_fecha = ["Cambio Comercializadora", "Cambio BIE", "Cambio Contrato"]
@@ -689,7 +843,6 @@ def webscraping(CUPS_input):
     df['Consumo anual P2'] = df['Consumo anual P2'].str.split().str[0]
     df['Consumo anual P3'] = df['Consumo anual P3'].str.split().str[0]
 
-    df[["Consumo anual","Consumo anual P1","Consumo anual P2","Consumo anual P3","P1","P2","Distribuidora"]]
 
     df[["Consumo anual","Consumo anual P1","Consumo anual P2","Consumo anual P3"]] = df[["Consumo anual","Consumo anual P1","Consumo anual P2","Consumo anual P3"]].astype(float)
 
@@ -711,26 +864,44 @@ def home():
 
 
 # 1./anualdata: recibe un CUPS, realiza el webscraping y devuelve los datos anuales
-@app.route('/anualdata/<string:CUPS_input>', methods=['GET'])
-def anual_data(CUPS_input):
+@app.route('/anualdata', methods=['GET'])
+def anual_data():
+    CUPS_input = request.args.get('CUPS_input', '')
     datos_anuales=webscraping(CUPS_input)
+    #datos_anuales=  {"CUPS":"ES0031104629924014ZJ","Municipio":"Jerez de la Frontera","Provincia":"Cádiz","Código Postal":11408,"Tarifa":"2.0TD","Consumo anual":3.613,"Consumo anual P1":834.0,"Consumo anual P2":955.0,"Consumo anual P3":1824.0,"Consumo anual P4":"0 KWh","Consumo anual P5":"0 KWh","Consumo anual P6":"0 KWh","P1":3.45,"P2":3.45,"P3":"","P4":"","P5":"","P6":"","Distribuidora":"ENDESA DISTRIBUCION ELECTRICA, S.L.","Cambio Comercializadora":1692403200000,"Cambio BIE":1161734400000,"1X230":"Tensión","Cambio Contrato":1622419200000}
     session["datos"] = datos_anuales
+    return datos_anuales
 #----------------------------------------------------------SEGUNDO ENDPOINT----------------------------------------------------------
 
 # 2./proposal: recibe los datos de factura, datos anuales, la compañía, modelo, etc, realiza los cálculos y devuelve todos los datos de la propuesta en concreto
-@app.route('/proposal/<string:Tipo_consumo>/<string:Metodo>/<float:cons_P1>/,<float:cons_P2>/<float:cons_P3>/<float:precio_P1>/<float:precio_P2>/<float:precio_P3>/<float:descuento>/<float:descuento_potencia>/<float:potencia_contratada_P1>/<float:potencia_contratada_P2>/<float:dias>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P2>/<float:impuesto_electrico>/<float:alquiler_equipo>/<float:otros>/<string:Tipo_sistema>/<string:Tipo_tarifa>/<string:CIA>/<string:producto_CIA>/<timestamp:mes_facturacion>/<string:FEE>/<int:IVA>', methods=['GET'])
-def proposal(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,descuento,descuento_potencia,potencia_contratada_P1,
-              potencia_contratada_P2,dias,precio_potencia_dia_P1,precio_potencia_dia_P2,impuesto_electrico,alquiler_equipo,otros,#Tipo_sistema,Tipo_tarifa,
-              CIA,producto_CIA,mes_facturacion,FEE,IVA): #tipo_consumo: mensual o anual; metodo: fijo o indexado
-    datos_anuales = session["datos"]
-    df_anuales = pd.DataFrame(datos_anuales)
+@app.route('/proposal', methods=['GET'])
+def proposal():
+    
+    Tipo_consumo_form = request.args.get('Tipo_consumo')
+    Metodo_form = request.args.get('Metodo')
+    cons_P1_form = float(request.args.get('cons_P1', 0))
+    cons_P2_form = float(request.args.get('cons_P2', 0))
+    cons_P3_form = float(request.args.get('cons_P3', 0))
+    precio_P1_form = float(request.args.get('precio_P1', 0))
+    precio_P2_form = float(request.args.get('precio_P2', 0))
+    precio_P3_form = float(request.args.get('precio_P3', 0))
+    descuento_form = float(request.args.get('descuento', 0))
+    descuento_potencia_form = float(request.args.get('descuento_potencia', 0))
+    potencia_contratada_P1_form = float(request.args.get('potencia_contratada_P1', 0))
+    potencia_contratada_P2_form = float(request.args.get('potencia_contratada_P2', 0))
+    dias_form = float(request.args.get('dias', 0))
+    precio_potencia_dia_P1_form = float(request.args.get('precio_potencia_dia_P1', 0))
+    precio_potencia_dia_P2_form = float(request.args.get('precio_potencia_dia_P2', 0))
+    impuesto_electrico_form = float(request.args.get('impuesto_electrico', 0))
+    alquiler_equipo_form = float(request.args.get('alquiler_equipo', 0))
+    otros_form = float(request.args.get('otros', 0))
+    CIA_form = request.args.get('CIA')
+    producto_CIA_form = request.args.get('producto_CIA')
+    mes_facturacion_form = request.args.get('mes_facturacion') #EJEMPLO FORMATO 2023-11-29, DEBE SER ASI, PORQUE SI NO NO SE CONVIERTE BIEN.
+    FEE_form = request.args.get('FEE')
+    IVA_form = float(request.args.get('IVA', 0))
+    mes_facturacion_form = datetime.strptime(mes_facturacion_form, '%Y-%m-%d')
 
-    cons_anual_P1 = df_anuales["Consumo anual P1"][0]
-    cons_anual_P2 = df_anuales["Consumo anual P2"][0]
-    cons_anual_P3 = df_anuales["Consumo anual P3"][0]
-    potencia_contratada_anual_P1 = df_anuales["P1"][0]
-    potencia_contratada_anual_P2 = df_anuales["P2"][0]
-    Distribuidora = df_anuales["Distribuidora"][0] #PARA FULLSTACK
 
 
     #-----------------------------------------------Filtro mensual/anual fija------------------------------------------------------------------------
@@ -762,7 +933,7 @@ def proposal(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,pre
 
 
     # Calcula la fecha máxima para cada combinación única de Sistema, Tarifa, Compañía y Fee
-    fecha_max_por_grupo = index_price_anual.groupby(['Sistema', 'tarifa', 'cia', 'fee'])['mes'].max()
+    fecha_max_por_grupo = index_price_anual.groupby(['sistema', 'tarifa', 'cia', 'fee'])['mes'].max()
 
     # Filtra los datos para los últimos 12 meses para cada grupo
     df_ult_12_meses = pd.DataFrame()
@@ -778,12 +949,12 @@ def proposal(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,pre
 
     # Calcula las medias para cada conjunto único de Sistema, Tarifa, Compañía y Fee
     df_medias_index_12 = df_ult_12_meses.groupby(['sistema', 'tarifa', 'cia', 'fee']).agg({
-        'P1': 'mean',
-        'P2': 'mean',
-        'P3': 'mean',
-        'P4': 'mean',
-        'P5': 'mean',
-        'P6': 'mean'
+        'p1': 'mean',
+        'p2': 'mean',
+        'p3': 'mean',
+        'p4': 'mean',
+        'p5': 'mean',
+        'p6': 'mean'
     }).reset_index()
 
     # Puedes renombrar las columnas si es necesario
@@ -803,48 +974,145 @@ def proposal(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,pre
 
 
     #----------------------------------------Calculadora de consumo mensual----------------------------------------------
-    if Tipo_consumo=='Consumo mensual':
+    if Tipo_consumo_form=='Consumo mensual':
         #------------------------------------------Mensual Fijo-------------------------------------------------------
-        if Metodo=='Fijo':
+        if Metodo_form=='Fijo':
             # funciones de cálculo importes
-            opcion_barata_mens_fijo = encontrar_opcion_mas_barata_mens_fijo(2,df_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-            return jsonify(opcion_barata_mens_fijo)
-          
-         #------------------------------------------Mensual Indexado--------------------------------------------------
-        elif Metodo=='Indexado':
-            opcion_barata_mens_index = encontrar_opcion_mas_barata_mens_index(2,filas_mas_cercanas,index_power_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento,descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
-            return jsonify(opcion_barata_mens_index)
+            opcion_barata_mens_fijo = encontrar_opcion_mas_barata_mens_fijo(2,df_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form, descuento_potencia_form,impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            return opcion_barata_mens_fijo
+        
+        #------------------------------------------Mensual Indexado--------------------------------------------------
+        elif Metodo_form=='Indexado':
+            opcion_barata_mens_index = encontrar_opcion_mas_barata_mens_index(2,filas_mas_cercanas,index_power_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form,descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            return opcion_barata_mens_index
 
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
-    elif Tipo_consumo=='Consumo anual':
-        #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
-        if Metodo=='Fijo':
+    elif Tipo_consumo_form=='Consumo anual':
+        
+        #datos_anuales = session["datos"]
+        
+        datos_anuales = {
+        "CUPS": "ES0031104629924014ZJ",
+        "Municipio": "Jerez de la Frontera",
+        "Provincia": "Cádiz",
+        "Código Postal": 11408,
+        "Tarifa": "2.0TD",
+        "Consumo anual": 3.613,
+        "Consumo anual P1": 834.0,
+        "Consumo anual P2": 955.0,
+        "Consumo anual P3": 1824.0,
+        "Consumo anual P4": "0 KWh",
+        "Consumo anual P5": "0 KWh",
+        "Consumo anual P6": "0 KWh",
+        "P1": 3.45,
+        "P2": 3.45,
+        "P3": "",
+        "P4": "",
+        "P5": "",
+        "P6": "",
+        "Distribuidora": "ENDESA DISTRIBUCION ELECTRICA, S.L.",
+        "Cambio Comercializadora": 1692403200000,
+        "Cambio BIE": 1161734400000,
+        "1X230": "Tensión",
+        "Cambio Contrato": 1622419200000
+        }
+    
+        datos_anuales = session["datos"]
+        datos_anuales_objeto = json.loads(datos_anuales)
+        df_anuales = pd.DataFrame(datos_anuales_objeto,index=[0])
+        
 
-            opcion_barata_anual_fijo=encontrar_opcion_mas_barata_anual_fijo(2,df_filtrado,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
-            return jsonify(opcion_barata_anual_fijo)
+        cons_anual_P1_scrap = df_anuales.at[0, "Consumo anual P1"]
+        cons_anual_P2_scrap = df_anuales.at[0,"Consumo anual P2"]
+        cons_anual_P3_scrap = df_anuales.at[0,"Consumo anual P3"]
+        potencia_contratada_anual_P1_scrap = df_anuales.at[0,"P1"]
+        potencia_contratada_anual_P2_scrap = df_anuales.at[0,"P2"]
+        Distribuidora_scrap = df_anuales.at[0,"Distribuidora"] #PARA FULLSTACK
+        
+        """precio_media_P1_db = df_medindx12_penins_2["p1"]
+        precio_media_P2_db = df_medindx12_penins_2["p2"]
+        precio_media_P3_db = df_medindx12_penins_2["p3"]"""
+        #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
+        if Metodo_form=='Fijo':
+
+            opcion_barata_anual_fijo=encontrar_opcion_mas_barata_anual_fijo(2,df_filtrado,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            return opcion_barata_anual_fijo
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
-        elif Metodo=='Indexado':
-             opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(2,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1,cons_anual_P2,cons_anual_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia, impuesto_electrico, otros, alquiler_equipo, IVA)
-             return jsonify(opcion_barata_anual_index)
+        elif Metodo_form=='Indexado':
+            opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(2,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            return opcion_barata_anual_index
 
 
 # # 3./proposals/chart: recibe los datos de factura, datos anuales y calcula los 5 mejores resultados, devuelve la gráfica con los % de ahorro de cada compañía y el ahorro total (€)
 
 #----------------------------------------------------------TERCER ENDPOINT----------------------------------------------------------
-@app.route('/proposals/chart/<string:Tipo_consumo>/<string:Metodo>/<float:cons_P1>/,<float:cons_P2>/<float:cons_P3>/<float:precio_P1>/<float:precio_P2>/<float:precio_P3>/<float:descuento>/<float:descuento_potencia>/<float:potencia_contratada_P1>/<float:potencia_contratada_P2>/<float:dias>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P1>/<float:precio_potencia_dia_P2>/<float:impuesto_electrico>/<float:alquiler_equipo>/<float:otros>/<string:Tipo_sistema>/<string:Tipo_tarifa>/<string:CIA>/<string:producto_CIA>/<timestamp:mes_facturacion>/<string:FEE>/<int:IVA>', methods=['GET'])
-def proposalschart(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,descuento,descuento_potencia,potencia_contratada_P1,
-              potencia_contratada_P2,dias,precio_potencia_dia_P1,precio_potencia_dia_P2,impuesto_electrico,alquiler_equipo,otros,#Tipo_sistema,Tipo_tarifa,
-              CIA,producto_CIA,mes_facturacion,FEE,IVA): #tipo_consumo: mensual o anual; metodo: fijo o indexado
+@app.route('/proposals/chart', methods=['GET'])
+def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
     
-    datos_anuales = session["datos"]
-    df_anuales = pd.DataFrame(datos_anuales)
+    Tipo_consumo_form = request.args.get('Tipo_consumo')
+    Metodo_form = request.args.get('Metodo')
+    cons_P1_form = float(request.args.get('cons_P1', 0))
+    cons_P2_form = float(request.args.get('cons_P2', 0))
+    cons_P3_form = float(request.args.get('cons_P3', 0))
+    precio_P1_form = float(request.args.get('precio_P1', 0))
+    precio_P2_form = float(request.args.get('precio_P2', 0))
+    precio_P3_form = float(request.args.get('precio_P3', 0))
+    descuento_form = float(request.args.get('descuento', 0))
+    descuento_potencia_form = float(request.args.get('descuento_potencia', 0))
+    potencia_contratada_P1_form = float(request.args.get('potencia_contratada_P1', 0))
+    potencia_contratada_P2_form = float(request.args.get('potencia_contratada_P2', 0))
+    dias_form = float(request.args.get('dias', 0))
+    precio_potencia_dia_P1_form = float(request.args.get('precio_potencia_dia_P1', 0))
+    precio_potencia_dia_P2_form = float(request.args.get('precio_potencia_dia_P2', 0))
+    impuesto_electrico_form = float(request.args.get('impuesto_electrico', 0))
+    alquiler_equipo_form = float(request.args.get('alquiler_equipo', 0))
+    otros_form = float(request.args.get('otros', 0))
+    CIA_form = request.args.get('CIA')
+    producto_CIA_form = request.args.get('producto_CIA')
+    mes_facturacion_form = request.args.get('mes_facturacion') #EJEMPLO FORMATO 2023-11-29, DEBE SER ASI, PORQUE SI NO NO SE CONVIERTE BIEN.
+    FEE_form = request.args.get('FEE')
+    IVA_form = float(request.args.get('IVA', 0))
+    mes_facturacion_form = datetime.strptime(mes_facturacion_form, '%Y-%m-%d')
 
-    cons_anual_P1 = df_anuales["Consumo anual P1"][0]
-    cons_anual_P2 = df_anuales["Consumo anual P2"][0]
-    cons_anual_P3 = df_anuales["Consumo anual P3"][0]
-    potencia_contratada_anual_P1 = df_anuales["P1"][0]
-    potencia_contratada_anual_P2 = df_anuales["P2"][0]
-    Distribuidora = df_anuales["Distribuidora"][0] #PARA FULLSTACK
+    #datos_anuales = session["datos"]
+    
+    datos_anuales = {
+    "CUPS": "ES0031104629924014ZJ",
+    "Municipio": "Jerez de la Frontera",
+    "Provincia": "Cádiz",
+    "Código Postal": 11408,
+    "Tarifa": "2.0TD",
+    "Consumo anual": 3.613,
+    "Consumo anual P1": 834.0,
+    "Consumo anual P2": 955.0,
+    "Consumo anual P3": 1824.0,
+    "Consumo anual P4": "0 KWh",
+    "Consumo anual P5": "0 KWh",
+    "Consumo anual P6": "0 KWh",
+    "P1": 3.45,
+    "P2": 3.45,
+    "P3": "",
+    "P4": "",
+    "P5": "",
+    "P6": "",
+    "Distribuidora": "ENDESA DISTRIBUCION ELECTRICA, S.L.",
+    "Cambio Comercializadora": 1692403200000,
+    "Cambio BIE": 1161734400000,
+    "1X230": "Tensión",
+    "Cambio Contrato": 1622419200000
+    }
+
+    datos_anuales = session["datos"]
+    datos_anuales_objeto = json.loads(datos_anuales)
+    df_anuales = pd.DataFrame(datos_anuales_objeto,index=[0])
+    
+
+    cons_anual_P1_scrap = df_anuales.at[0, "Consumo anual P1"]
+    cons_anual_P2_scrap = df_anuales.at[0,"Consumo anual P2"]
+    cons_anual_P3_scrap = df_anuales.at[0,"Consumo anual P3"]
+    potencia_contratada_anual_P1_scrap = df_anuales.at[0,"P1"]
+    potencia_contratada_anual_P2_scrap = df_anuales.at[0,"P2"]
+    Distribuidora_scrap = df_anuales.at[0,"Distribuidora"] #PARA FULLSTACK
 
 
     #-----------------------------------------------Filtro mensual/anual fija------------------------------------------------------------------------
@@ -872,9 +1140,8 @@ def proposalschart(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_
 
     #----------------------------------------------Filtro anual indexed energia--------------------------------------------------------------------
 
-
     # Calcula la fecha máxima para cada combinación única de Sistema, Tarifa, Compañía y Fee
-    fecha_max_por_grupo = index_price_anual.groupby(['Sistema', 'tarifa', 'cia', 'fee'])['mes'].max()
+    fecha_max_por_grupo = index_price_anual.groupby(['sistema', 'tarifa', 'cia', 'fee'])['mes'].max()
 
     # Filtra los datos para los últimos 12 meses para cada grupo
     df_ult_12_meses = pd.DataFrame()
@@ -890,12 +1157,12 @@ def proposalschart(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_
 
     # Calcula las medias para cada conjunto único de Sistema, Tarifa, Compañía y Fee
     df_medias_index_12 = df_ult_12_meses.groupby(['sistema', 'tarifa', 'cia', 'fee']).agg({
-        'P1': 'mean',
-        'P2': 'mean',
-        'P3': 'mean',
-        'P4': 'mean',
-        'P5': 'mean',
-        'P6': 'mean'
+        'p1': 'mean',
+        'p2': 'mean',
+        'p3': 'mean',
+        'p4': 'mean',
+        'p5': 'mean',
+        'p6': 'mean'
     }).reset_index()
 
     # Puedes renombrar las columnas si es necesario
@@ -914,35 +1181,45 @@ def proposalschart(Tipo_consumo,Metodo,cons_P1,cons_P2,cons_P3,precio_P1,precio_
 
 
     #----------------------------------------Calculadora de consumo mensual----------------------------------------------
-    if Tipo_consumo=='Consumo mensual':
+    if Tipo_consumo_form=='Consumo mensual':
         #------------------------------------------Mensual Fijo-------------------------------------------------------
-        if Metodo=='Fijo':
+        if Metodo_form=='Fijo':
             # funciones de cálculo importes
-            opciones_baratas_mens_fijo, opciones_grafica = encontrar_opcion_mas_barata_mens_fijo(3,df_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-            grafica(opciones_grafica)
-            return jsonify(opciones_baratas_mens_fijo)
+
+            opciones_baratas_mens_fijo, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_fijo(3,df_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form, descuento_potencia_form,impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            opciones_baratas_anual_fijo, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_fijo(3,df_filtrado,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
+            return opciones_baratas_mens_fijo
             
          #------------------------------------------Mensual Indexado--------------------------------------------------
-        elif Metodo=='Indexado':
-            opciones_baratas_mens_index = encontrar_opcion_mas_barata_mens_index(3,filas_mas_cercanas,index_power_filtrado,cons_P1,cons_P2,cons_P3,precio_P1,precio_P2,precio_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-            return jsonify(opciones_baratas_mens_index)
+        elif Metodo_form=='Indexado':
+
+            opciones_baratas_mens_index, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_index(3,filas_mas_cercanas,index_power_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form,descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            opciones_baratas_anual_index, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            
+            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
+            return opciones_baratas_mens_index
 
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
-    elif Tipo_consumo=='Consumo anual':
+    elif Tipo_consumo_form=='Consumo anual':
+
+
+        
         #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
-        if Metodo=='Fijo':
+        if Metodo_form=='Fijo':
 
-            opciones_baratas_anual_fijo, opciones_grafica=encontrar_opcion_mas_barata_anual_fijo(3,df_filtrado,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-            grafica(opciones_grafica)
-            return jsonify(opciones_baratas_anual_fijo)
+            opciones_baratas_mens_fijo, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_fijo(3,df_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form, descuento_potencia_form,impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            opciones_baratas_anual_fijo, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_fijo(3,df_filtrado,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            
+            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
+            return opciones_baratas_anual_fijo
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
-        elif Metodo=='Indexado':
-             opciones_baratas_anual_index=encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_P1,precio_P2,precio_P3,potencia_contratada_anual_P1,potencia_contratada_anual_P2,precio_potencia_dia_P1,precio_potencia_dia_P2,descuento, descuento_potencia,impuesto_electrico, otros, alquiler_equipo, IVA)
-             return jsonify(opciones_baratas_anual_index)
-
-
-
-
+        elif Metodo_form=='Indexado':
+            opciones_baratas_mens_index, opciones_grafica_mens = encontrar_opcion_mas_barata_mens_index(3,filas_mas_cercanas,index_power_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form,descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            opciones_baratas_anual_index, opciones_grafica_anual = encontrar_opcion_mas_barata_anual_index(3,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+             
+            figura = grafica(opciones_grafica_mens,opciones_grafica_anual)
+            return opciones_baratas_anual_index
 
 
 if __name__ == "__main__":
