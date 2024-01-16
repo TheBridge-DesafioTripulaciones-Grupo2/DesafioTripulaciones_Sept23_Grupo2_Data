@@ -195,48 +195,58 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
             p3e_barata=precio_mens_P3
             p1p_barata=precio_potencia_dia_P1
             p2p_barata=precio_potencia_dia_P2
+    
+    best_option_cia = min(min_cost_dict, key=min_cost_dict.get)
+    best_option_row_index = df.index[df['cia'] == best_option_cia][0]
 
+    best_option_row = df.loc[best_option_row_index+1]
 
     opciones = [{
-        'CIA': cia,
-        'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
-        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
-        'CostoTotal': min_cost,
-        'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
-        'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
-        } for cia, min_cost in min_cost_dict.items()]
+        'CIA': best_option_cia,
+        'FEE': best_option_row['fee'],
+        'PRODUCTO_CIA': best_option_row['producto_cia'],
+        'CostoTotal': min_cost_dict[best_option_cia],
+        'Ahorro': round(importe_total_factura_mens_actual - min_cost_dict[best_option_cia], 2),
+        'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost_dict[best_option_cia]) / importe_total_factura_mens_actual) * 100, 2),
+        'p1e':best_option_row['p1_e'],
+        'p2e':best_option_row['p2_e'],
+        'p3e':best_option_row['p3_e'],
+        'p1p':best_option_row['p1_p'],
+        'p2p':best_option_row['p2_p'],
+        }]
+        #  for cia, min_cost in min_cost_dict.items()]
 
     # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)
-    idx_opcion_mas_barata = df_opciones['CostoTotal'].idxmin()
+    # idx_opcion_mas_barata = df_opciones['CostoTotal'].idxmin()
     
-    opcion_barata=df_opciones.iloc[idx_opcion_mas_barata]
+    # opcion_barata=df_opciones.iloc[idx_opcion_mas_barata]
 
-    opciones_mas_baratas = df_opciones.nsmallest(5, 'CostoTotal')
-    ahorro_euros=round(importe_total_factura_mens_actual-opcion_barata['CostoTotal'],2)
-    porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
+    # opciones_mas_baratas = df_opciones.nsmallest(5, 'CostoTotal')
+    # ahorro_euros=round(importe_total_factura_mens_actual-opcion_barata['CostoTotal'],2)
+    # porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
 
     if endpoint == 2:
 
-        dict1={
-            'Precio actual': importe_total_factura_mens_actual,
-            'Ahorro': ahorro_euros,
-            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
-        } 
-        dict2=opcion_barata.to_dict()
-        dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
-            'p1p':p1p_barata, 'p2p':p2p_barata}
-        dict1.update(dict2)
-        dict1.update(dict3)
-        return dict1
+        # dict1={
+        #     'Precio actual': importe_total_factura_mens_actual,
+        #     'Ahorro': ahorro_euros,
+        #     'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
+        # } 
+        # dict2=opcion_barata.to_dict()
+        # dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
+        #     'p1p':p1p_barata, 'p2p':p2p_barata}
+        # dict1.update(dict2)
+        # dict1.update(dict3)
+        return df_opciones.to_json(orient='records') #dict1
     
-    elif endpoint==3:
-        resultados_df = pd.DataFrame([{'Precio actual': importe_total_factura_mens_actual, 'Opciones más baratas': opciones_mas_baratas}])
+    # elif endpoint==3:
+    #     resultados_df = pd.DataFrame([{'Precio actual': importe_total_factura_mens_actual, 'Opciones más baratas': opciones_mas_baratas}])
         
-        resultados = resultados_df.to_json(orient='records', force_ascii=False)
+    #     resultados = resultados_df.to_json(orient='records', force_ascii=False)
         
         
-        return jsonify(resultados),opciones_mas_baratas
+    #     return jsonify(resultados),opciones_mas_baratas
 
 #--------------------------------------------------------Mensual indexado------------------------------------------------------------------------
 
