@@ -16,38 +16,44 @@ from key import usuario,contrasena
 import os
 #-------------------------------------------------------------CREAR GRAFICA-------------------------------------------------------
 def grafica(df_grafica_mens, df_grafica_anual):
+
+
     # Creamos un dataframe para cada barra a representar, en este caso mensual y anual
-    customdata_mensual = df_grafica_mens[['FEE', 'PRODUCTO_CIA', 'PorcentajeAhorro', 'Ahorro']]
-    customdata_anual = df_grafica_anual[['FEE', 'PRODUCTO_CIA', 'PorcentajeAhorro', 'Ahorro']]
+    customdata_mensual = df_grafica_mens[['fee', 'producto_cia', 'porcentajeahorro', 'ahorro']]
+    customdata_anual = df_grafica_anual[['fee', 'producto_cia', 'porcentajeahorro', 'ahorro']]
 
     # Creación de barras por separado
     bar_mensual = px.bar(
         data_frame=df_grafica_mens,
-        x='CIA', 
-        y='Ahorro',
+        x='cia', 
+        y='ahorro',
         title='Porcentajes de ahorro Mensual por Empresa',
         labels={'value': 'Porcentaje de Ahorro', 'CIA':'Compañía'},
         hover_data={
-            'CIA': True, 
-            'FEE': True,
-            'PorcentajeAhorro': True,
-            'PRODUCTO_CIA': True,
-            'Ahorro': True},
-        custom_data=customdata_mensual,)
+            'cia': True, 
+            'fee': True,
+            'porcentajeahorro': True,
+            'producto_cia': True,
+            'ahorro': True
+        },
+        custom_data=customdata_mensual,
+    )
 
     bar_anual = px.bar(
         data_frame=df_grafica_anual,
-        x='CIA', 
-        y='Ahorro',
+         x='cia', 
+        y='ahorro',
         title='Porcentajes de ahorro Anual por Empresa',
         labels={'value': 'Porcentaje de Ahorro', 'CIA':'Compañía'},
         hover_data={
-            'CIA': True, 
-            'FEE': True,
-            'PorcentajeAhorro': True,
-            'PRODUCTO_CIA': True,
-            'Ahorro': True},
-        custom_data=customdata_anual)
+            'cia': True, 
+            'fee': True,
+            'porcentajeahorro': True,
+            'producto_cia': True,
+            'ahorro': True
+        },
+        custom_data=customdata_anual,
+    )
 
     # Actualizar el color de las barras
     bar_mensual.update_traces(marker_color='#1F1D1C', name='Mensual')
@@ -61,25 +67,24 @@ def grafica(df_grafica_mens, df_grafica_anual):
         barmode='group',
         width=800,
         legend=dict(title='', orientation='h', y=-0.12, x=0, traceorder='grouped'),
-        hoverlabel=dict(bgcolor='#CCC8C8'))
+        hoverlabel=dict(bgcolor='#FAFAFA')
+    )
 
     fig.update_traces(
-        hovertemplate='<b style="color:#701516; font-size:16px">FEE: %{customdata[0]}</b><br>'
-                  '<b style="color:#701516;">PRODUCTO_CIA:</b> %{customdata[1]}<br>'
-                  '<b style="color:#701516;">Ahorro en euros:</b> %{customdata[2]:,.2f}<br>'
-                  '<b style="color:#701516;">Porcentaje de ahorro:</b> %{customdata[3]}<br>', 
-        hoverlabel=dict(bgcolor='#FFFFFF'),
-)
-
+        hovertemplate='<b style="color:#1F1D1C; font-size:16px">FEE: %{customdata[0]}</b><br>'
+                    '<b style="color:#1F1D1C;">PRODUCTO_CIA:</b> %{customdata[1]}<br>'
+                    '<b style="color:#1F1D1C;">Ahorro en euros:</b> %{customdata[2]:,.2f}'
+                    '<b style="color:#1F1D1C;">Porcentaje de ahorro:</b> %{customdata[3]}<br>', 
+        hoverlabel=dict(bgcolor='#FAFAFA'),
+    )
     fig.update_layout(
         legend=dict(title='', orientation='h', y=-0.12, x=0, traceorder='grouped'),
-        yaxis=dict(range=[0, 50], tickvals=[10, 20, 30, 40, 50], ticktext=['10%', '20%', '30%', '40%', '50%'],showgrid=True, gridcolor='#CCC8C8'),  # Ampliar el eje y al 50% y especificar los valores deseados
+        yaxis=dict(range=[0, 50], tickvals=[10, 20, 30, 40, 50], ticktext=['10%', '20%', '30%', '40%', '50%'],showgrid=True),  # Ampliar el eje y al 50% y especificar los valores deseados
         margin=dict(l=50, r=150, b=50, t=50),  # Ajustar los márgenes
-        xaxis=dict(showgrid=True, gridcolor='#CCC8C8'), 
+        xaxis=dict(showgrid=True), 
         grid=dict(xside='top', yside='right'), 
-        plot_bgcolor="#FFFFFF"  # Color de fondo del gráfico
-)
-
+        plot_bgcolor="#FAFAFA"  # Color de fondo del gráfico
+    )
     fig.update_xaxes(categoryorder='array', categoryarray=['Mensual', 'Anual'])  # Personalizar el orden de las barras
     fig.update_layout(bargap=0.45)  # Ajustar espacio entre las barras
 
@@ -131,56 +136,40 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
         sumatorio_total_pago_potencia = calcular_potencia_mens_fijo(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
         importe_total_factura_mens = round(calcular_total_factura_mens_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros, alquiler_equipo,IVA),2)
         
-        if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
-            min_cost_dict[row['cia']] = importe_total_factura_mens
-            p1e_barata=precio_mens_P1
-            p2e_barata=precio_mens_P2
-            p3e_barata=precio_mens_P3
-            p1p_barata=precio_potencia_dia_P1
-            p2p_barata=precio_potencia_dia_P2
-
+        if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]['costototal']:
+                min_cost_dict[row['cia']] = {
+                    'costototal': importe_total_factura_mens,
+                    'p1_e': precio_mens_P1,
+                    'p2_e': precio_mens_P2,
+                    'p3_e': precio_mens_P3,
+                    'p1_p': precio_potencia_dia_P1,
+                    'p2_p': precio_potencia_dia_P2
+                }
 
     opciones = [{
-        'CIA': cia,
-        'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
-        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
-        'CostoTotal': min_cost,
-        'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
-        'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
-        } for cia, min_cost in min_cost_dict.items()]
+        'cia': cia,
+        'fee': df.loc[df['cia'] == cia, 'fee'].values[0],
+        'producto_cia': df.loc[df['cia'] == cia,  'producto_cia'].values[0],
+        'costototal': min_cost_dict[cia]['costototal'],
+        'ahorro': round(importe_total_factura_mens_actual - min_cost_dict[cia]['costototal'], 2),
+        'porcentajeahorro': round(((importe_total_factura_mens_actual - min_cost_dict[cia]['costototal']) / importe_total_factura_mens_actual) * 100, 2),
+        'p1_e': min_cost_dict[cia]['p1_e'],
+        'p2_e': min_cost_dict[cia]['p2_e'],
+        'p3_e': min_cost_dict[cia]['p3_e'],
+        'p1_p': min_cost_dict[cia]['p1_p'],
+        'p2_p': min_cost_dict[cia]['p2_p'],
+                'precioactual':importe_total_factura_mens_actual
+    } for cia in min_cost_dict]
 
-    # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)
-    idx_opcion_mas_barata = df_opciones['CostoTotal'].idxmin()
-    
-    opcion_barata=df_opciones.iloc[idx_opcion_mas_barata]
-
-    opciones_mas_baratas = df_opciones.nsmallest(5, 'CostoTotal')
-    ahorro_euros=round(importe_total_factura_mens_actual-opcion_barata['CostoTotal'],2)
-    porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
-
     if endpoint == 2:
 
-        dict1={
-            'Precio actual': importe_total_factura_mens_actual,
-            'Ahorro': ahorro_euros,
-            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
-        } 
-        dict2=opcion_barata.to_dict()
-        dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
-            'p1p':p1p_barata, 'p2p':p2p_barata}
-        dict1.update(dict2)
-        dict1.update(dict3)
-        return dict1
+        return df_opciones.nsmallest(1,'costototal').to_json(orient='records') #dict1
     
     elif endpoint==3:
-        resultados_df = pd.DataFrame([{'Precio actual': importe_total_factura_mens_actual, 'Opciones más baratas': opciones_mas_baratas}])
-        
-        resultados = resultados_df.to_json(orient='records', force_ascii=False)
-        
-        
-        return jsonify(resultados),opciones_mas_baratas
-    
+
+        return df_opciones.nsmallest(5,'costototal').to_json(orient='records'), df_opciones.nsmallest(5,'costototal')
+
 #--------------------------------------------------------Mensual indexado------------------------------------------------------------------------
 
 # funciones de cálculo importes
@@ -211,6 +200,7 @@ def calcular_total_factura_mens_index(sumatorio_total_pago_energia,sumatorio_tot
     importe_total_factura_mens= bi_IVA * (1+IVA)
     return importe_total_factura_mens
 
+
 def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,cons_mens_P1,cons_mens_P2,cons_mens_P3,precio_mens_P1,precio_mens_P2,precio_mens_P3,potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2, descuento, dto_p,impuesto_electrico, otros, alquiler_equipo, IVA):
     opciones = []
 
@@ -230,58 +220,45 @@ def encontrar_opcion_mas_barata_mens_index(endpoint:int,df_energia,df_potencia,c
         sumatorio_total_pago_energia = calcular_energia_mens_index(cons_mens_P1, cons_mens_P2, cons_mens_P3, precio_mens_P1, precio_mens_P2, precio_mens_P3, descuento)
         sumatorio_total_pago_potencia = calcular_potencia_mens_index(potencia_contratada_P1, potencia_contratada_P2, dias, precio_potencia_dia_P1, precio_potencia_dia_P2,dto_p)
         importe_total_factura_mens = round(calcular_total_factura_mens_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico, otros,alquiler_equipo, IVA),2)
-
-        if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]:
-            min_cost_dict[row['cia']] = importe_total_factura_mens
-            p1e_barata=precio_mens_P1
-            p2e_barata=precio_mens_P2
-            p3e_barata=precio_mens_P3
-            p1p_barata=precio_potencia_dia_P1
-            p2p_barata=precio_potencia_dia_P2
+        
+        if row['cia'] not in min_cost_dict or importe_total_factura_mens < min_cost_dict[row['cia']]['costototal']:
+                min_cost_dict[row['cia']] = {
+                    'costototal': importe_total_factura_mens,
+                    'p1_e': precio_mens_P1,
+                    'p2_e': precio_mens_P2,
+                    'p3_e': precio_mens_P3,
+                    'p1_p': precio_potencia_dia_P1,
+                    'p2_p': precio_potencia_dia_P2
+                }
 
     opciones = [{
-        'CIA': cia,
-        'FEE': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0], #PINTA MAL
-        'PRODUCTO_CIA': df_combinado.loc[df_combinado['cia'] == cia, 'producto_cia'].values[0],
-        'CostoTotal': min_cost,
-        'Ahorro': round(importe_total_factura_mens_actual - min_cost, 2),
-        'PorcentajeAhorro': round(((importe_total_factura_mens_actual - min_cost) / importe_total_factura_mens_actual) * 100, 2)
-    } for cia, min_cost in min_cost_dict.items()]
+        'cia': cia,
+        'fee': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0],
+        'producto_cia': df_combinado.loc[df_combinado['cia'] == cia,  'producto_cia'].values[0],
+        'costototal': min_cost_dict[cia]['costototal'],
+        'ahorro': round(importe_total_factura_mens_actual - min_cost_dict[cia]['costototal'], 2),
+        'porcentajeahorro': round(((importe_total_factura_mens_actual - min_cost_dict[cia]['costototal']) / importe_total_factura_mens_actual) * 100, 2),
+        'p1_e': min_cost_dict[cia]['p1_e'],
+        'p2_e': min_cost_dict[cia]['p2_e'],
+        'p3_e': min_cost_dict[cia]['p3_e'],
+        'p1_p': min_cost_dict[cia]['p1_p'],
+        'p2_p': min_cost_dict[cia]['p2_p'],
+        'precioactual':importe_total_factura_mens_actual
+    } for cia in min_cost_dict]
 
-    # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)
-    idx_opcion_mas_barata = df_opciones['CostoTotal'].idxmin()
-
-    opcion_barata=df_opciones.iloc[idx_opcion_mas_barata]
-
-    opciones_mas_baratas = df_opciones.nsmallest(5, 'CostoTotal')
-    ahorro_euros=round(importe_total_factura_mens_actual-opcion_barata['CostoTotal'],2)
-    porcentaje_ahorro= round((ahorro_euros/importe_total_factura_mens_actual)*100,2)
+        
     if endpoint == 2:
 
-        dict1={
-            'Precio actual': importe_total_factura_mens_actual,
-            'Ahorro': ahorro_euros,
-            'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
-        } 
-        dict2=opcion_barata.to_dict()
-        dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
-            'p1p':p1p_barata, 'p2p':p2p_barata}
-        dict1.update(dict2)
-        dict1.update(dict3)
-        return dict1
+        return df_opciones.nsmallest(1,'costototal').to_json(orient='records')
+    
+    elif endpoint==3:
 
-    elif endpoint == 3:
-        resultados_df = pd.DataFrame([{
-            'Precio actual': importe_total_factura_mens_actual,
-            'Opciones más baratas': opciones_mas_baratas
-        }])
+        return df_opciones.nsmallest(5,'costototal').to_json(orient='records')
 
-        resultados = resultados_df.to_json(orient='records', force_ascii=False)
-
-        return jsonify(resultados),opciones_mas_baratas
 
 #------------------------------------------------------------ANUAL FIJO-----------------------------------------------------------------
+
 # funciones de cálculo importes
 
 def calcular_energia_anual_fijo(cons_anual_P1,cons_anual_P2,cons_anual_P3, precio_mens_P1,precio_mens_P2,precio_mens_P3,descuento):
@@ -335,55 +312,38 @@ def encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1_scrap,c
 
         importe_total_factura_anual = round(calcular_total_factura_anual_fijo(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico_form, otros_form, alquiler_equipo_form,IVA_form),2)
         # Update the minimum cost for each 'CIA'
-        if row['cia'] not in min_cost_dict or importe_total_factura_anual < min_cost_dict[row['cia']]:
-            min_cost_dict[row['cia']] = importe_total_factura_anual
-            p1e_barata=precio_mens_P1
-            p2e_barata=precio_mens_P2
-            p3e_barata=precio_mens_P3
-            p1p_barata=precio_potencia_dia_P1
-            p2p_barata=precio_potencia_dia_P2
+        if row['cia'] not in min_cost_dict or importe_total_factura_anual < min_cost_dict[row['cia']]['costototal']:
+                min_cost_dict[row['cia']] = {
+                    'costototal': importe_total_factura_anual,
+                    'p1_e': precio_mens_P1,
+                    'p2_e': precio_mens_P2,
+                    'p3_e': precio_mens_P3,
+                    'p1_p': precio_potencia_dia_P1,
+                    'p2_p': precio_potencia_dia_P2
+                }
 
- 
     opciones = [{
-        'CIA': cia,
-        'FEE': df.loc[df['cia'] == cia, 'fee'].values[0],
-        'PRODUCTO_CIA': df.loc[df['cia'] == cia, 'producto_cia'].values[0],
-        'CostoTotal': min_cost,
-        'Ahorro': round(importe_total_factura_anual_actual - min_cost, 2),
-        'PorcentajeAhorro': round(((importe_total_factura_anual_actual - min_cost) / importe_total_factura_anual_actual) * 100, 2)
-    } for cia, min_cost in min_cost_dict.items()]
+        'cia': cia,
+        'fee': df.loc[df['cia'] == cia, 'fee'].values[0],
+        'producto_cia': df.loc[df['cia'] == cia,  'producto_cia'].values[0],
+        'costototal': min_cost_dict[cia]['costototal'],
+        'ahorro': round(importe_total_factura_anual_actual - min_cost_dict[cia]['costototal'], 2),
+        'porcentajeahorro': round(((importe_total_factura_anual_actual - min_cost_dict[cia]['costototal']) / importe_total_factura_anual_actual) * 100, 2),
+        'p1_e': min_cost_dict[cia]['p1_e'],
+        'p2_e': min_cost_dict[cia]['p2_e'],
+        'p3_e': min_cost_dict[cia]['p3_e'],
+        'p1_p': min_cost_dict[cia]['p1_p'],
+        'p2_p': min_cost_dict[cia]['p2_p'],
+        'precioactual':importe_total_factura_anual_actual
+    } for cia in min_cost_dict]
 
-    # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)
-    idx_opcion_mas_barata = df_opciones['CostoTotal'].idxmin()
+
+    if endpoint == 2:
+        return df_opciones.nsmallest(1,'costototal').to_json(orient='records')
     
-    opcion_barata=df_opciones.iloc[idx_opcion_mas_barata]
-
-    opciones_mas_baratas = df_opciones.nsmallest(5, 'CostoTotal')
-    ahorro_euros=round(importe_total_factura_anual_actual-opcion_barata['CostoTotal'],2)
-    porcentaje_ahorro= round((ahorro_euros/importe_total_factura_anual_actual)*100,2)
-
-    if endpoint == 2: #CHECK
-        dict1={
-                'Precio actual': importe_total_factura_anual_actual,
-                'Ahorro': ahorro_euros,
-                'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
-            } 
-        dict2=opcion_barata.to_dict()
-        dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
-            'p1p':p1p_barata, 'p2p':p2p_barata}
-        dict1.update(dict2)
-        dict1.update(dict3)
-        return dict1
-
-    elif endpoint == 3:
-        resultado_df = pd.DataFrame([{
-            'Precio actual': importe_total_factura_anual_actual,
-            'Opciones más baratas': opciones_mas_baratas
-        }])
-        
-        resultados = resultado_df.to_json(orient='records', force_ascii=False)
-        return jsonify(resultados), opciones_mas_baratas
+    elif endpoint==3:
+        return df_opciones.nsmallest(5,'costototal').to_json(orient='records'), df_opciones.nsmallest(5,'costototal')
 
 #-------------------------------------------------------ANUAL INDEXADO----------------------------------------------------
 
@@ -438,57 +398,40 @@ def encontrar_opcion_mas_barata_anual_index(endpoint:int,df_energia, df_potencia
         importe_total_factura_anual_ppta = round(calcular_total_factura_anual_index(sumatorio_total_pago_energia, sumatorio_total_pago_potencia, impuesto_electrico_form, otros_form,alquiler_equipo_form, IVA_form),2)
         
        # Update the minimum cost for each 'CIA'
-        if row['cia'] not in min_cost_dict or importe_total_factura_anual_ppta < min_cost_dict[row['cia']]:
-            min_cost_dict[row['cia']] = importe_total_factura_anual_ppta
-            p1e_barata=precio_mens_P1
-            p2e_barata=precio_mens_P2
-            p3e_barata=precio_mens_P3
-            p1p_barata=precio_potencia_dia_P1
-            p2p_barata=precio_potencia_dia_P2
-    
+        if row['cia'] not in min_cost_dict or importe_total_factura_anual_ppta < min_cost_dict[row['cia']]['costototal']:
+                min_cost_dict[row['cia']] = {
+                    'costototal': importe_total_factura_anual_ppta,
+                    'p1_e': precio_mens_P1,
+                    'p2_e': precio_mens_P2,
+                    'p3_e': precio_mens_P3,
+                    'p1_p': precio_potencia_dia_P1,
+                    'p2_p': precio_potencia_dia_P2
+                }
+
     # Create a list with the minimum cost entries for each 'CIA' and calculate savings for each option
     opciones = [{
-        'CIA': cia,
-        'FEE': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0],
-        'PRODUCTO_CIA': df_combinado.loc[df_combinado['cia'] == cia, 'producto_cia'].values[0],
-        'CostoTotal': min_cost,
-        'Ahorro': round(importe_total_factura_anual_actual - min_cost, 2),
-        'PorcentajeAhorro': round(((importe_total_factura_anual_actual - min_cost) / importe_total_factura_anual_actual) * 100, 2)
-    } for cia, min_cost in min_cost_dict.items()]
+        'cia': cia,
+        'fee': df_combinado.loc[df_combinado['cia'] == cia, 'fee'].values[0],
+        'producto_cia': df_combinado.loc[df_combinado['cia'] == cia,  'producto_cia'].values[0],
+        'costototal': min_cost_dict[cia]['costototal'],
+        'ahorro': round(importe_total_factura_anual_actual - min_cost_dict[cia]['costototal'], 2),
+        'porcentajeahorro': round(((importe_total_factura_anual_actual - min_cost_dict[cia]['costototal']) / importe_total_factura_anual_actual) * 100, 2),
+        'p1_e': min_cost_dict[cia]['p1_e'],
+        'p2_e': min_cost_dict[cia]['p2_e'],
+        'p3_e': min_cost_dict[cia]['p3_e'],
+        'p1_p': min_cost_dict[cia]['p1_p'],
+        'p2_p': min_cost_dict[cia]['p2_p'],
+        'precioactual':importe_total_factura_anual_actual
+    } for cia in min_cost_dict]
 
-    # Opción más barata para cada compañía
     df_opciones = pd.DataFrame(opciones)
-    idx_opcion_mas_barata = df_opciones['CostoTotal'].idxmin()
-    
-    opcion_barata=df_opciones.iloc[idx_opcion_mas_barata]
-
-    opciones_mas_baratas = df_opciones.nsmallest(5, 'CostoTotal')
-    ahorro_euros=round(importe_total_factura_anual_actual-opcion_barata['CostoTotal'],2)
-    porcentaje_ahorro= round((ahorro_euros/importe_total_factura_anual_actual)*100,2)
 
     if endpoint == 2:
-            dict1={
-                    'Precio actual': importe_total_factura_anual_actual,
-                    'Ahorro': ahorro_euros,
-                    'Porcentaje de ahorro': f"{porcentaje_ahorro:.1f}%",
-                } 
-            dict2=opcion_barata.to_dict()
-            dict3={'p1e':p1e_barata,'p2e':p2e_barata,'p3e':p3e_barata,
-                'p1p':p1p_barata, 'p2p':p2p_barata}
-            dict1.update(dict2)
-            dict1.update(dict3)
-            return dict1
-
-
-    elif endpoint == 3:
-        response_data = pd.DataFrame([{
-            'Precio actual': importe_total_factura_anual_actual,
-            'Opciones más baratas': opciones_mas_baratas
-        }])
-
-        resultados = response_data.to_json(orient='records', force_ascii=False)
-        return jsonify(resultados)
+        return df_opciones.nsmallest(1,'costototal').to_json(orient='records')
     
+    elif endpoint==3:
+        return df_opciones.nsmallest(5,'costototal').to_json(orient='records')
+
     #----------------------------------------------------FUNCIÓN WEBSCRAPING-------------------------------------------------------------------------------------------------------------------------------
 
 def webscraping(CUPS_input):
