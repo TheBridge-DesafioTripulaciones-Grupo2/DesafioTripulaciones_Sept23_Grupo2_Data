@@ -143,7 +143,11 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
                     'p2_e': precio_mens_P2,
                     'p3_e': precio_mens_P3,
                     'p1_p': precio_potencia_dia_P1,
-                    'p2_p': precio_potencia_dia_P2
+                    'p2_p': precio_potencia_dia_P2,
+                    'total_energia': sumatorio_total_pago_energia,
+                    'total_potencia': sumatorio_total_pago_potencia,
+                    'total_energia':sumatorio_total_pago_energia,
+                    'total_potencia':sumatorio_total_pago_potencia
                 }
 
     opciones = [{
@@ -158,7 +162,10 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
         'p3_e': min_cost_dict[cia]['p3_e'],
         'p1_p': min_cost_dict[cia]['p1_p'],
         'p2_p': min_cost_dict[cia]['p2_p'],
-                'precioactual':importe_total_factura_mens_actual
+        'precioactual':importe_total_factura_mens_actual,
+        'total_energia':sumatorio_total_pago_energia,
+        'total_potencia':sumatorio_total_pago_potencia
+
     } for cia in min_cost_dict]
 
     df_opciones = pd.DataFrame(opciones)
@@ -319,7 +326,9 @@ def encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1_scrap,c
                     'p2_e': precio_mens_P2,
                     'p3_e': precio_mens_P3,
                     'p1_p': precio_potencia_dia_P1,
-                    'p2_p': precio_potencia_dia_P2
+                    'p2_p': precio_potencia_dia_P2,
+                    'total_energia': sumatorio_total_pago_energia,
+                    'total_potencia': sumatorio_total_pago_potencia
                 }
 
     opciones = [{
@@ -334,7 +343,9 @@ def encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1_scrap,c
         'p3_e': min_cost_dict[cia]['p3_e'],
         'p1_p': min_cost_dict[cia]['p1_p'],
         'p2_p': min_cost_dict[cia]['p2_p'],
-        'precioactual':importe_total_factura_anual_actual
+        'precioactual':importe_total_factura_anual_actual,
+        'total_energia':sumatorio_total_pago_energia,
+        'total_potencia':sumatorio_total_pago_potencia
     } for cia in min_cost_dict]
 
     df_opciones = pd.DataFrame(opciones)
@@ -443,43 +454,44 @@ def webscraping(CUPS_input):
     options = webdriver.ChromeOptions()
 
     driver = webdriver.Chrome(service=service, options=options)
+    driver.implicitly_wait(10)
     driver.get("http://www.google.es")
     loadMore = driver.find_element(By.XPATH, '/html/body/div[2]/div[3]/div[3]/span/div/div/div/div[3]/div[1]/button[1]/div')
     loadMore.click()
     url = 'https://agentes.candelaenergia.es/#/login'
     driver.get(url)
-    time.sleep(1)
+
     caja_seleccion = WebDriverWait(driver, 10).until(
     EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div/div/div[1]/div/form/div[1]/div[1]/md-select')))
     caja_seleccion.click()
-    time.sleep(1)
+
     opciones = WebDriverWait(driver, 10).until(
     EC.presence_of_all_elements_located((By.XPATH, '/html/body/div[4]/md-select-menu/md-content/md-option[1]/div[1]')))
     
     opciones[0].click()
-    time.sleep(1)
+
     campo_usuario = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[1]/div/form/div[1]/div[2]/input')
     campo_contraseña = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[1]/div/form/div[1]/div[3]/input')
 
     campo_usuario.send_keys(usuario)
     campo_contraseña.send_keys(contrasena)
 
-    time.sleep(1)
+
     formulario = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[1]/div/form/button')
     formulario.click()
 
-    time.sleep(5)
+
     sips = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[1]/ul/li[3]/a')
     sips.click()
 
-    time.sleep(2)
+
     CUPS = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/div[2]/md-tabs/md-tabs-content-wrapper/md-tab-content/div/md-card/div/form/div[1]/md-input-container[1]/input')
-    time.sleep(1)
+
     CUPS.send_keys(CUPS_input) #aqui iba el cups de kino: ES0031104629924014ZJ0F
 
     inspeccionar_CUPS = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/div[2]/md-tabs/md-tabs-content-wrapper/md-tab-content/div/md-card/div/form/div[4]/button')
     inspeccionar_CUPS.click()
-    time.sleep(5)
+
     tabla_CUPS = driver.find_element(By.XPATH, '/html/body/div[1]/div/div/div/div[2]/div/div[2]/md-tabs/md-tabs-content-wrapper/md-tab-content/div/md-content/md-card/md-table-container/table/tbody/tr[1]/td[3]/input')
     
     placeholder_CUPS = tabla_CUPS.get_attribute('placeholder')

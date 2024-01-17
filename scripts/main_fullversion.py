@@ -195,7 +195,9 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
                     'p2_e': precio_mens_P2,
                     'p3_e': precio_mens_P3,
                     'p1_p': precio_potencia_dia_P1,
-                    'p2_p': precio_potencia_dia_P2
+                    'p2_p': precio_potencia_dia_P2,
+                    'total_energia': sumatorio_total_pago_energia,
+                    'total_potencia': sumatorio_total_pago_potencia
                 }
 
     opciones = [{
@@ -210,7 +212,10 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
         'p3_e': min_cost_dict[cia]['p3_e'],
         'p1_p': min_cost_dict[cia]['p1_p'],
         'p2_p': min_cost_dict[cia]['p2_p'],
-                'precioactual':importe_total_factura_mens_actual
+        'precioactual':importe_total_factura_mens_actual,
+        'total_energia':sumatorio_total_pago_energia,
+        'total_potencia':sumatorio_total_pago_potencia
+
     } for cia in min_cost_dict]
 
     df_opciones = pd.DataFrame(opciones)
@@ -370,7 +375,9 @@ def encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1_scrap,c
                     'p2_e': precio_mens_P2,
                     'p3_e': precio_mens_P3,
                     'p1_p': precio_potencia_dia_P1,
-                    'p2_p': precio_potencia_dia_P2
+                    'p2_p': precio_potencia_dia_P2,
+                    'total_energia': sumatorio_total_pago_energia,
+                    'total_potencia': sumatorio_total_pago_potencia
                 }
 
     opciones = [{
@@ -385,7 +392,9 @@ def encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1_scrap,c
         'p3_e': min_cost_dict[cia]['p3_e'],
         'p1_p': min_cost_dict[cia]['p1_p'],
         'p2_p': min_cost_dict[cia]['p2_p'],
-        'precioactual':importe_total_factura_anual_actual
+        'precioactual':importe_total_factura_anual_actual,
+        'total_energia':sumatorio_total_pago_energia,
+        'total_potencia':sumatorio_total_pago_potencia
     } for cia in min_cost_dict]
 
     df_opciones = pd.DataFrame(opciones)
@@ -488,10 +497,13 @@ def webscraping(CUPS_input):
     # CUPS_input=request.args.get('CUPS_input')
     dir_path = os.path.dirname(os.path.realpath(__file__))
 
+    
+
     service = Service(executable_path=(os.path.join(dir_path, ".", "chromedriver.exe")))
     options = webdriver.ChromeOptions()
 
     driver = webdriver.Chrome(service=service, options=options)
+    driver.implicitly_wait(10)
     driver.get("http://www.google.es")
     loadMore = driver.find_element(By.XPATH, '/html/body/div[2]/div[3]/div[3]/span/div/div/div/div[3]/div[1]/button[1]/div')
     loadMore.click()
@@ -837,7 +849,17 @@ def proposal():
     IVA_form = float(request.args.get('IVA', 0))
     mes_facturacion_form = datetime.strptime(mes_facturacion_form, '%Y-%m-%d')
 
+    datos_anuales = session["datos"]
+    datos_anuales_objeto = json.loads(datos_anuales)
+    df_anuales = pd.DataFrame(datos_anuales_objeto,index=[0])
+    
 
+    cons_anual_P1_scrap = df_anuales.at[0, "Consumo anual P1"]
+    cons_anual_P2_scrap = df_anuales.at[0,"Consumo anual P2"]
+    cons_anual_P3_scrap = df_anuales.at[0,"Consumo anual P3"]
+    potencia_contratada_anual_P1_scrap = df_anuales.at[0,"P1"]
+    potencia_contratada_anual_P2_scrap = df_anuales.at[0,"P2"]
+    Distribuidora_scrap = df_anuales.at[0,"Distribuidora"] #PARA FULLSTACK
 
     #-----------------------------------------------Filtro mensual/anual fija------------------------------------------------------------------------
 
@@ -909,72 +931,53 @@ def proposal():
 
 
     #----------------------------------------Calculadora de consumo mensual----------------------------------------------
-    if Tipo_consumo_form=='Consumo mensual':
+    if Tipo_consumo_form=='Consumo_mensual':
         #------------------------------------------Mensual Fijo-------------------------------------------------------
         if Metodo_form=='Fijo':
             # funciones de cálculo importes
             opcion_barata_mens_fijo = encontrar_opcion_mas_barata_mens_fijo(2,df_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form, descuento_potencia_form,impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
-            return opcion_barata_mens_fijo
+            opcion_barata_anual_fijo = encontrar_opcion_mas_barata_anual_fijo(2,df_filtrado,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            
+            json1 = json.loads(opcion_barata_mens_fijo)
+            json2 = json.loads(opcion_barata_anual_fijo)
+
+            # Combina los dos conjuntos de datos
+            data_combinado = json1 + json2
+
+            # Convierte el resultado de vuelta a una cadena JSON
+            opcion_barata = json.dumps(data_combinado, indent=2)
+
+            return opcion_barata
         
         #------------------------------------------Mensual Indexado--------------------------------------------------
         elif Metodo_form=='Indexado':
             opcion_barata_mens_index = encontrar_opcion_mas_barata_mens_index(2,filas_mas_cercanas,index_power_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form,descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            
             return opcion_barata_mens_index
 
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
-    elif Tipo_consumo_form=='Consumo anual':
+    elif Tipo_consumo_form=='Consumo_anual':
         
-        datos_anuales = session["datos"]
-        
-        """datos_anuales = {
-        "CUPS": "ES0031104629924014ZJ",
-        "Municipio": "Jerez de la Frontera",
-        "Provincia": "Cádiz",
-        "Código Postal": 11408,
-        "Tarifa": "2.0TD",
-        "Consumo anual": 3.613,
-        "Consumo anual P1": 834.0,
-        "Consumo anual P2": 955.0,
-        "Consumo anual P3": 1824.0,
-        "Consumo anual P4": "0 KWh",
-        "Consumo anual P5": "0 KWh",
-        "Consumo anual P6": "0 KWh",
-        "P1": 3.45,
-        "P2": 3.45,
-        "P3": "",
-        "P4": "",
-        "P5": "",
-        "P6": "",
-        "Distribuidora": "ENDESA DISTRIBUCION ELECTRICA, S.L.",
-        "Cambio Comercializadora": 1692403200000,
-        "Cambio BIE": 1161734400000,
-        "1X230": "Tensión",
-        "Cambio Contrato": 1622419200000
-        }"""
-    
-        datos_anuales = session["datos"]
-        datos_anuales_objeto = json.loads(datos_anuales)
-        df_anuales = pd.DataFrame(datos_anuales_objeto,index=[0])
-        
-
-        cons_anual_P1_scrap = df_anuales.at[0, "Consumo anual P1"]
-        cons_anual_P2_scrap = df_anuales.at[0,"Consumo anual P2"]
-        cons_anual_P3_scrap = df_anuales.at[0,"Consumo anual P3"]
-        potencia_contratada_anual_P1_scrap = df_anuales.at[0,"P1"]
-        potencia_contratada_anual_P2_scrap = df_anuales.at[0,"P2"]
-        Distribuidora_scrap = df_anuales.at[0,"Distribuidora"] #PARA FULLSTACK
-        
-        """precio_media_P1_db = df_medindx12_penins_2["p1"]
-        precio_media_P2_db = df_medindx12_penins_2["p2"]
-        precio_media_P3_db = df_medindx12_penins_2["p3"]"""
         #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
         if Metodo_form=='Fijo':
+            opcion_barata_mens_fijo = encontrar_opcion_mas_barata_mens_fijo(2,df_filtrado,cons_P1_form,cons_P2_form,cons_P3_form,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_P1_form, potencia_contratada_P2_form, dias_form, precio_potencia_dia_P1_form, precio_potencia_dia_P2_form, descuento_form, descuento_potencia_form,impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            opcion_barata_anual_fijo = encontrar_opcion_mas_barata_anual_fijo(2,df_filtrado,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            
+            json1 = json.loads(opcion_barata_mens_fijo)
+            json2 = json.loads(opcion_barata_anual_fijo)
 
-            opcion_barata_anual_fijo=encontrar_opcion_mas_barata_anual_fijo(2,df_filtrado,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap, precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
-            return opcion_barata_anual_fijo
+            # Combina los dos conjuntos de datos
+            data_combinado = json1 + json2
+
+            # Convierte el resultado de vuelta a una cadena JSON
+            opcion_barata = json.dumps(data_combinado, indent=2)
+
+            return opcion_barata
         #--------------------------------------------------------Anual indexado-------------------------------------------------------------
         elif Metodo_form=='Indexado':
+
             opcion_barata_anual_index=encontrar_opcion_mas_barata_anual_index(2,df_medindx12_penins_2,index_power_filtrado_anual,cons_anual_P1_scrap,cons_anual_P2_scrap,cons_anual_P3_scrap,precio_P1_form,precio_P2_form,precio_P3_form,potencia_contratada_anual_P1_scrap,potencia_contratada_anual_P2_scrap,precio_potencia_dia_P1_form,precio_potencia_dia_P2_form,descuento_form, descuento_potencia_form, impuesto_electrico_form, otros_form, alquiler_equipo_form, IVA_form)
+            
             return opcion_barata_anual_index
 
 
@@ -1010,34 +1013,6 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
     mes_facturacion_form = datetime.strptime(mes_facturacion_form, '%Y-%m-%d')
 
     datos_anuales = session["datos"]
-    
-    """datos_anuales = {
-    "CUPS": "ES0031104629924014ZJ",
-    "Municipio": "Jerez de la Frontera",
-    "Provincia": "Cádiz",
-    "Código Postal": 11408,
-    "Tarifa": "2.0TD",
-    "Consumo anual": 3.613,
-    "Consumo anual P1": 834.0,
-    "Consumo anual P2": 955.0,
-    "Consumo anual P3": 1824.0,
-    "Consumo anual P4": "0 KWh",
-    "Consumo anual P5": "0 KWh",
-    "Consumo anual P6": "0 KWh",
-    "P1": 3.45,
-    "P2": 3.45,
-    "P3": "",
-    "P4": "",
-    "P5": "",
-    "P6": "",
-    "Distribuidora": "ENDESA DISTRIBUCION ELECTRICA, S.L.",
-    "Cambio Comercializadora": 1692403200000,
-    "Cambio BIE": 1161734400000,
-    "1X230": "Tensión",
-    "Cambio Contrato": 1622419200000
-    }"""
-
-    datos_anuales = session["datos"]
     datos_anuales_objeto = json.loads(datos_anuales)
     df_anuales = pd.DataFrame(datos_anuales_objeto,index=[0])
     
@@ -1048,7 +1023,6 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
     potencia_contratada_anual_P1_scrap = df_anuales.at[0,"P1"]
     potencia_contratada_anual_P2_scrap = df_anuales.at[0,"P2"]
     Distribuidora_scrap = df_anuales.at[0,"Distribuidora"] #PARA FULLSTACK
-
 
     #-----------------------------------------------Filtro mensual/anual fija------------------------------------------------------------------------
     #mensual utiliza la fixed price, la filtramos para peninsula y 2.0
@@ -1116,7 +1090,7 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
 
 
     #----------------------------------------Calculadora de consumo mensual----------------------------------------------
-    if Tipo_consumo_form=='Consumo mensual':
+    if Tipo_consumo_form=='Consumo_mensual':
         #------------------------------------------Mensual Fijo-------------------------------------------------------
         if Metodo_form=='Fijo':
             # funciones de cálculo importes
@@ -1134,7 +1108,7 @@ def proposalschart(): #tipo_consumo: mensual o anual; metodo: fijo o indexado
             return opciones_baratas_mens_index
 
 #-------------------------------------------------Calculadora Consumo Anual--------------------------------------------------------------
-    elif Tipo_consumo_form=='Consumo anual':
+    elif Tipo_consumo_form=='Consumo_anual':
 
         #---------------------------------------------------------Anual Fijo----------------------------------------------------------------
         if Metodo_form=='Fijo':
