@@ -163,8 +163,8 @@ def encontrar_opcion_mas_barata_mens_fijo(endpoint:int,df,cons_mens_P1,cons_mens
         'p1_p': min_cost_dict[cia]['p1_p'],
         'p2_p': min_cost_dict[cia]['p2_p'],
         'precioactual':importe_total_factura_mens_actual,
-        'total_energia':sumatorio_total_pago_energia,
-        'total_potencia':sumatorio_total_pago_potencia
+        'total_energia': min_cost_dict[cia]['total_energia'],
+        'total_potencia':min_cost_dict[cia]['total_potencia']
 
     } for cia in min_cost_dict]
 
@@ -344,8 +344,8 @@ def encontrar_opcion_mas_barata_anual_fijo(endpoint:int,df,cons_anual_P1_scrap,c
         'p1_p': min_cost_dict[cia]['p1_p'],
         'p2_p': min_cost_dict[cia]['p2_p'],
         'precioactual':importe_total_factura_anual_actual,
-        'total_energia':sumatorio_total_pago_energia,
-        'total_potencia':sumatorio_total_pago_potencia
+        'total_energia': min_cost_dict[cia]['total_energia'],
+        'total_potencia':min_cost_dict[cia]['total_potencia']
     } for cia in min_cost_dict]
 
     df_opciones = pd.DataFrame(opciones)

@@ -15,6 +15,9 @@ import json
 import plotly.graph_objects as go
 from key import usuario,contrasena
 import os
+import warnings
+warnings.filterwarnings("ignore")
+
 
 app = Flask(__name__)
 app.config["DEBUG"] = True

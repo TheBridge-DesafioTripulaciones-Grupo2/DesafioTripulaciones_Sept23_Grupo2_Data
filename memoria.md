@@ -1,6 +1,6 @@
 ![img](several.jpg)
+# Memoria del proyecto de Data Science para Several Energy
 
-# Proyecto de Data Science para Several Energy
 ## Descripción
 Este proyecto tiene como objetivo mejorar los procesos de Several Energy mediante la implementación de diversas técnicas y herramientas de ciencia de datos. Los logros clave de este proyecto incluyen web scraping con Selenium para obtener datos anuales de los clientes según su CUPS, el desarrollo de cuatro calculadoras de precios de la luz para diferentes compañías y sus planes, la creación de una API versátil con varios endpoints para la ingesta de datos de facturas, generación de propuestas y visualizaciones dinámicas, así como un breve Análisis Exploratorio de Datos (EDA) y la estructura de una base de datos SQL para conectar la API.
 
